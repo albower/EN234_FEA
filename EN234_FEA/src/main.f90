@@ -3,15 +3,9 @@ program en234fea
   use ParamIO
   use Globals
   use Controlparameters
-  use Element_Utilities, only : eigenvecs33
-  use Element_Utilities, only : sqrtM33
   implicit none
 
-  real (prec) :: matrix(3,3)
-  real (prec) :: eigenvalues(3)
-  real (prec) :: eigenvectors(3,3)
-
-!  Uncomment the lines below to get input and output file names from the console
+ !  Uncomment the lines below to get input and output file names from the console
 !  This does not work well in eclipse (and does not work at all when debugging in eclipse)
 !  100 write (6, 99001, advance = 'no')
 !  read (5, '(A100)') infil
@@ -23,20 +17,11 @@ program en234fea
 !  99002 format ('Please specify the log file name:    ')
 !
 
-   matrix = reshape((/1.5d0,0.5d0,0.d0,0.5d0,1.5d0,0.d0,0.d0,0.d0,1.d0/),(/3,3/))
-   eigenvectors = sqrtM33(matrix)
 
-   write(6,*) eigenvectors(1,1:3)
-   write(6,*) eigenvectors(2,1:3)
-   write(6,*) eigenvectors(3,1:3)
-
-
-!  infil = './input_files/hyperelastic_3d.in'
-!  open (unit = IOR, file = infil, status = 'old', ERR=500)
-!  outfil = './Output_files/hyperelastic_3d.out'
-!  open (UNIT = IOW, FILE = outfil, STATUS = 'unknown', ERR=500)
-
-  stop
+  infil = './input_files/linear_elastic_3d.in'
+  open (unit = IOR, file = infil, status = 'old', ERR=500)
+  outfil = './Output_files/linear_elastic_3d.out'
+  open (UNIT = IOW, FILE = outfil, STATUS = 'unknown', ERR=500)
 
   call read_input_file
   
