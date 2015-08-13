@@ -153,7 +153,7 @@
 
 %  Print the initial mesh to a file named initial_mesh.dat
 
-   PRINT INITIAL MESH, initial_mesh.dat
+   PRINT INITIAL MESH, Output_files\initial_mesh.dat
 
 %   TIME, VALUE, 0.d0        % Use this to specify the initial time
 %   TIME, INCREMENT, 0.01d0  % Use this to specify a time increment (often needed for check stiffness)
@@ -172,7 +172,7 @@
      STATIC STEP
 
 
-          INITIAL TIME STEP, 1.d0        % Test of a comment here
+          INITIAL TIME STEP, 1.d0        
           MAX TIME STEP, 1.d0
           MIN TIME STEP, 0.001d0
           MAX NUMBER OF STEPS, 3
