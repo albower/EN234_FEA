@@ -255,7 +255,7 @@ subroutine print_state
     implicit none
 
     ! Local Variables
-    integer      :: i, jp, k, lmn, n,iz,izstart,status,n_auxiliary_nodes,auxiliary_node
+    integer      :: i, jp, k, lmn, n,iz,izstart,status,n_auxiliary_nodes,auxiliary_node,n_auxiliary_dof
     integer      :: n_printable_nodes,n_printable_elements,ntotalvars
     integer      :: iof
     character ( len = 130 ) :: tecplotstring
@@ -491,6 +491,7 @@ subroutine print_state
               xx = 0.d0
               auxiliary_dof = 0.d0
               auxiliary_dof_increment = 0.d0
+              n_auxiliary_dof = node_list(connectivity(element_list(lmn)%connect_index))%n_dof
               if (n_field_variables>0) auxiliary_field_variables = 0.d0
               do k = 1,4
                  n = connectivity(element_list(lmn)%connect_index + k-1)
@@ -564,14 +565,14 @@ subroutine print_state
               if (print_dof.and.ntotalvars>0) then
                  iof = node_list(n)%dof_index
                  write (state_print_unit, format_string) (xx(i), i=1,node_list(n)%n_coords), &
-                            (dof_increment(iof+i), i=0,node_list(n)%n_dof-1), &
-                            (dof_total(iof+i), i=0,node_list(n)%n_dof-1), &
+                            (auxiliary_dof_increment(i), i=1,n_auxiliary_dof), &
+                            (auxiliary_dof(i), i=1,n_auxiliary_dof), &
                             (field_variables(i,n), i=1,n_field_variables)
               else if (print_dof) then
                  iof = node_list(n)%dof_index
                  write (state_print_unit, format_string) (xx(i), i=1,node_list(n)%n_coords), &
-                            (dof_increment(iof+i), i=0,node_list(n)%n_dof-1), &
-                            (dof_total(iof+i), i=0,node_list(n)%n_dof-1)
+                            (auxiliary_dof_increment(i), i=1,n_auxiliary_dof), &
+                            (auxiliary_dof(i), i=1,n_auxiliary_dof)
               else if (ntotalvars>0) then
                  iof = node_list(n)%dof_index
                  write (state_print_unit, format_string) (xx(i), i=1,node_list(n)%n_coords), &
