@@ -6,7 +6,7 @@ subroutine print_initial_mesh
     implicit none
 
     ! Local Variables
-    integer      :: i, jp, k, lmn, n,iz,izstart,status
+    integer      :: i, jp, k, lmn, n,iz,izstart,status, nnodes
     integer      :: n_printable_nodes,n_printable_elements,ntotalvars
     integer      :: iof
     character ( len = 130 ) :: tecplotstring
@@ -71,6 +71,7 @@ subroutine print_initial_mesh
                 if (element_list(lmn)%n_nodes == 3) cycle
                 if (element_list(lmn)%n_nodes == 4) cycle
                 if (element_list(lmn)%n_nodes == 6) cycle
+                if (element_list(lmn)%n_nodes == 8) cycle
                 if (element_list(lmn)%n_nodes == 9) cycle
             else if (zone_dimension(iz)==3) then
                 if (element_list(lmn)%n_nodes == 4) cycle
@@ -108,12 +109,17 @@ subroutine print_initial_mesh
                 if (element_list(lmn)%n_nodes == 3) n_printable_elements = n_printable_elements + 1
                 if (element_list(lmn)%n_nodes == 4) n_printable_elements = n_printable_elements + 1
                 if (element_list(lmn)%n_nodes == 6) n_printable_elements = n_printable_elements + 4
+                if (element_list(lmn)%n_nodes == 8) n_printable_elements = n_printable_elements + 1 ! corner nodes only
                 if (element_list(lmn)%n_nodes == 9) n_printable_elements = n_printable_elements + 4
             else if (zone_dimension(iz)==3) then
                 if (element_list(lmn)%n_nodes == 8) n_printable_elements = n_printable_elements + 1
                 if (element_list(lmn)%n_nodes == 4) n_printable_elements = n_printable_elements + 1
             endif
-            do k = 1,element_list(lmn)%n_nodes
+            nnodes = element_list(lmn)%n_nodes
+            if (zone_dimension(iz)==2) then
+               if (element_list(lmn)%n_nodes == 8) nnodes = 4
+            endif
+            do k = 1,nnodes
                 n = connectivity(element_list(lmn)%connect_index + k-1)
                 if (node_numbers(n)==0) then
                     n_printable_nodes = n_printable_nodes + 1
@@ -121,6 +127,8 @@ subroutine print_initial_mesh
                 endif
             end do
         end do
+
+
 
         write(initial_mesh_print_unit,*) trim(tecplotstring)
         if (zone_dimension(iz)==2) then
@@ -132,7 +140,12 @@ subroutine print_initial_mesh
         endif
         ! Print the nodes
         do lmn = zone_list(iz)%start_element,zone_list(iz)%end_element
-            do k = 1,element_list(lmn)%n_nodes
+
+            nnodes = element_list(lmn)%n_nodes
+            if (zone_dimension(iz)==2) then
+               if (element_list(lmn)%n_nodes == 8) nnodes = 4
+            endif
+            do k = 1,nnodes
                 n = connectivity(element_list(lmn)%connect_index + k-1)
                 if (node_numbers(n)>0) then
                     node_numbers(n) = - node_numbers(n)          ! Prevents more prints
@@ -177,6 +190,11 @@ subroutine print_initial_mesh
                     write (initial_mesh_print_unit, *) node_numbers(connectivity(jp + 4)), &
                         node_numbers(connectivity(jp + 5)),  &
                         node_numbers(connectivity(jp + 8)), node_numbers(connectivity(jp + 7))
+                else if ( element_list(lmn)%n_nodes==8 ) then ! Only corner nodes are printed for 2D serendipity element
+                    write (initial_mesh_print_unit, *) node_numbers(connectivity(jp)), &
+                        node_numbers(connectivity(jp + 1)), &
+                        node_numbers(connectivity(jp + 2)), &
+                        node_numbers(connectivity(jp + 3))
                 else if ( element_list(lmn)%n_nodes==6 ) then
                     write (initial_mesh_print_unit, *) node_numbers(connectivity(jp)), &
                         node_numbers(connectivity(jp + 3)), &
@@ -237,7 +255,7 @@ subroutine print_state
     implicit none
 
     ! Local Variables
-    integer      :: i, jp, k, lmn, n,iz,izstart,status
+    integer      :: i, jp, k, lmn, n,iz,izstart,status,n_auxiliary_nodes,auxiliary_node
     integer      :: n_printable_nodes,n_printable_elements,ntotalvars
     integer      :: iof
     character ( len = 130 ) :: tecplotstring
@@ -249,14 +267,21 @@ subroutine print_state
 
     integer, allocatable :: node_numbers(:)                  ! Nodes need to be re-numbered for TECPLOT if not all nodes are printed
     real (prec), allocatable :: lumped_projection_matrix(:)  ! Lumped mass matrix for projecting field variables from int pts to nodes
-    real(prec), allocatable :: field_variables(:,:)          ! User-defined field variables to be printed
-  
-    ! Print solution to a file that may be read by TECPLOT
+    real (prec), allocatable :: field_variables(:,:)         ! User-defined field variables to be printed
+    real (prec), allocatable :: auxiliary_field_variables(:) ! Field variables at auxiliary nodes of quadratic elements
+    real (prec), allocatable :: auxiliary_dof(:)             ! DOF at auxiliary nodes of quadratic elements
+    real (prec), allocatable :: auxiliary_dof_increment(:)   ! DOF increment at auxiliary nodes of quadratic elements
+
+
+        ! Print solution to a file that may be read by TECPLOT
 
     if (n_field_variables>0) then
         allocate(lumped_projection_matrix(n_nodes), stat = status)
         allocate(field_variables(n_field_variables,n_nodes), stat = status)
+        allocate(auxiliary_field_variables(n_field_variables), stat=status)
     endif
+    allocate(auxiliary_dof(maxval(zone_ndof)), stat=status)
+    allocate(auxiliary_dof_increment(maxval(zone_ndof)), stat=status)
     allocate(node_numbers(n_nodes), stat = status)
     if (status /=0) then
         write(IOW,*) ' Error in subroutine print_state '
@@ -305,6 +330,7 @@ subroutine print_state
     ! If all zones are printed together, count all the printable elements and assign numbers to all printable nodes
     node_numbers = 0
     n_printable_nodes = 0
+    n_auxiliary_nodes = 0
     n_printable_elements = 0
     if (combinezones) then
         do iz = izstart,n_zones
@@ -315,6 +341,10 @@ subroutine print_state
                     if (element_list(lmn)%n_nodes == 3) n_printable_elements = n_printable_elements + 1
                     if (element_list(lmn)%n_nodes == 4) n_printable_elements = n_printable_elements + 1
                     if (element_list(lmn)%n_nodes == 6) n_printable_elements = n_printable_elements + 4
+                    if (element_list(lmn)%n_nodes == 8) then
+                        n_printable_elements = n_printable_elements + 4
+                        n_auxiliary_nodes = n_auxiliary_nodes + 1
+                    endif
                     if (element_list(lmn)%n_nodes == 9) n_printable_elements = n_printable_elements + 4
                 else if (zone_dimension(iz)==3) then
                     if (element_list(lmn)%n_nodes == 8) n_printable_elements = n_printable_elements + 1
@@ -333,10 +363,10 @@ subroutine print_state
         write(state_print_unit,*) trim(tecplotstring)
         if (zone_dimension(iz)==2) then
             write (state_print_unit,'(A10,D10.4,A15,I5,A3,I5,A9)') ' ZONE, T="',TIME+DTIME,&
-                '" F=FEPOINT, I=', n_printable_nodes, ' J=', n_printable_elements
+                '" F=FEPOINT, I=', n_printable_nodes+n_auxiliary_nodes, ' J=', n_printable_elements
         else if (zone_dimension(iz)==3) then
             write (state_print_unit,'(A10,D10.4,A15,I5,A3,I5,A9)') ' ZONE, T="',TIME+DTIME, &
-                '" F=FEPOINT, I=', n_printable_nodes, ' J=', n_printable_elements,' ET=BRICK'
+                '" F=FEPOINT, I=', n_printable_nodes+n_auxiliary_nodes, ' J=', n_printable_elements,' ET=BRICK'
         endif
     endif
 
@@ -366,11 +396,16 @@ subroutine print_state
             node_numbers = 0
             n_printable_elements = 0
             n_printable_nodes = 0
+            n_auxiliary_nodes = 0
             do lmn = zone_list(iz)%start_element,zone_list(iz)%end_element
                 if (zone_dimension(iz)==2) then
                     if (element_list(lmn)%n_nodes == 3) n_printable_elements = n_printable_elements + 1
                     if (element_list(lmn)%n_nodes == 4) n_printable_elements = n_printable_elements + 1
                     if (element_list(lmn)%n_nodes == 6) n_printable_elements = n_printable_elements + 4
+                    if (element_list(lmn)%n_nodes == 8) then
+                       n_printable_elements = n_printable_elements + 4
+                       n_auxiliary_nodes = n_auxiliary_nodes+1
+                    endif
                     if (element_list(lmn)%n_nodes == 9) n_printable_elements = n_printable_elements + 4
                 else if (zone_dimension(iz)==3) then
                     if (element_list(lmn)%n_nodes == 8) n_printable_elements = n_printable_elements + 1
@@ -388,10 +423,10 @@ subroutine print_state
             write(state_print_unit,*) trim(tecplotstring)
             if (zone_dimension(iz)==2) then
                 write (state_print_unit,'(A10,D10.4,A15,I5,A3,I5,A9)') ' ZONE, T="',TIME+DTIME,&
-                    '" F=FEPOINT, I=', n_printable_nodes, ' J=', n_printable_elements
+                    '" F=FEPOINT, I=', n_printable_nodes+n_auxiliary_nodes, ' J=', n_printable_elements
             else if (zone_dimension(iz)==3) then
                 write (state_print_unit,'(A10,D10.4,A15,I5,A3,I5,A9)') ' ZONE, T="',TIME+DTIME,&
-                    '" F=FEPOINT, I=', n_printable_nodes, ' J=', n_printable_elements,' ET=BRICK'
+                    '" F=FEPOINT, I=', n_printable_nodes+n_auxiliary_nodes, ' J=', n_printable_elements,' ET=BRICK'
             endif
         endif
 
@@ -450,6 +485,104 @@ subroutine print_state
                 endif
             end do
         end do
+
+        ! Print auxiliary nodes for quadratic elements
+        do lmn = zone_list(iz)%start_element,zone_list(iz)%end_element
+           if (element_list(lmn)%n_nodes == 8) then
+              ! Coordinates, DOF, and field variables at the auxiliary node are found by interpolating to the center
+              xx = 0.d0
+              auxiliary_dof = 0.d0
+              auxiliary_dof_increment = 0.d0
+              if (n_field_variables>0) auxiliary_field_variables = 0.d0
+              do k = 1,4
+                 n = connectivity(element_list(lmn)%connect_index + k-1)
+                 iof = node_list(n)%dof_index
+                 do i = 1, node_list(n)%n_dof
+                    auxiliary_dof(i) = auxiliary_dof(i) - 0.25d0*dof_total(iof+i-1)
+                    auxiliary_dof_increment(i) = auxiliary_dof_increment(i) - 0.25d0*dof_increment(iof+i-1)
+                 end do
+                 if (n_field_variables>0) auxiliary_field_variables(1:n_field_variables) = &
+                                            auxiliary_field_variables(1:n_field_variables) &
+                                                - 0.25d0*field_variables(1:n_field_variables,n)
+                 do i = 1, node_list(n)%n_coords
+                    xx(i) = xx(i) - 0.25d0*coords(node_list(n)%coord_index + i - 1)
+                 end do
+                 if (print_displacedmesh) then
+                     if (node_list(n)%n_displacements>0) then  ! Use the displacement map if one was provided
+                         do i = 1,node_list(n)%n_coords
+                             iof = node_list(n)%dof_index + displacement_map(node_list(n)%displacement_map_index + i-1)-1
+                             xx(i) = xx(i) - 0.25d0*displacementscalefactor*(dof_total(iof) + dof_increment(iof))
+                         end do
+                     else   ! Otherwise if # DOF exceeds # coords assume first DOF are displacements
+                         if (node_list(n)%n_coords<=node_list(n)%n_dof) then
+                             do i = 1,node_list(n)%n_coords
+                                 iof = node_list(n)%dof_index +  i-1
+                                 xx(i) = xx(i) - 0.25d0*displacementscalefactor*(dof_total(iof) + dof_increment(iof))
+                             end do
+                         endif  ! Otherwise do not displace mesh
+                     endif
+                 endif
+              end do
+              do k = 5,8
+                 n = connectivity(element_list(lmn)%connect_index + k-1)
+                 iof = node_list(n)%dof_index
+                 do i = 1, node_list(n)%n_dof
+                    auxiliary_dof(i) = auxiliary_dof(i) + 0.5d0*dof_total(iof+i-1)
+                    auxiliary_dof_increment(i) = auxiliary_dof_increment(i) + 0.5d0*dof_increment(iof+i-1)
+                 end do
+                 if (n_field_variables>0) auxiliary_field_variables(1:n_field_variables) = &
+                                            auxiliary_field_variables(1:n_field_variables) &
+                                                + 0.5d0*field_variables(1:n_field_variables,n)
+                 do i = 1, node_list(n)%n_coords
+                    xx(i) = xx(i) + 0.5d0*coords(node_list(n)%coord_index + i - 1)
+                 end do
+                 if (print_displacedmesh) then
+                     if (node_list(n)%n_displacements>0) then  ! Use the displacement map if one was provided
+                         do i = 1,node_list(n)%n_coords
+                             iof = node_list(n)%dof_index + displacement_map(node_list(n)%displacement_map_index + i-1)-1
+                             xx(i) = xx(i) + 0.5d0*displacementscalefactor*(dof_total(iof) + dof_increment(iof))
+                         end do
+                     else   ! Otherwise if # DOF exceeds # coords assume first DOF are displacements
+                         if (node_list(n)%n_coords<=node_list(n)%n_dof) then
+                             do i = 1,node_list(n)%n_coords
+                                 iof = node_list(n)%dof_index +  i-1
+                                 xx(i) = xx(i) + 0.5d0*displacementscalefactor*(dof_total(iof) + dof_increment(iof))
+                             end do
+                         endif  ! Otherwise do not displace mesh
+                     endif
+                 endif
+              end do
+
+
+              ntotalvars = node_list(n)%n_coords + n_field_variables
+              if (print_dof) ntotalvars = ntotalvars + 2*node_list(n)%n_dof
+              if (ntotalvars<10) then
+                  write(char4,'(I1)') ntotalvars
+              else
+                  write(char4,'(I2)') ntotalvars
+              endif
+              format_string = '('// char4 //'(1X,E18.10))'
+
+              if (print_dof.and.ntotalvars>0) then
+                 iof = node_list(n)%dof_index
+                 write (state_print_unit, format_string) (xx(i), i=1,node_list(n)%n_coords), &
+                            (dof_increment(iof+i), i=0,node_list(n)%n_dof-1), &
+                            (dof_total(iof+i), i=0,node_list(n)%n_dof-1), &
+                            (field_variables(i,n), i=1,n_field_variables)
+              else if (print_dof) then
+                 iof = node_list(n)%dof_index
+                 write (state_print_unit, format_string) (xx(i), i=1,node_list(n)%n_coords), &
+                            (dof_increment(iof+i), i=0,node_list(n)%n_dof-1), &
+                            (dof_total(iof+i), i=0,node_list(n)%n_dof-1)
+              else if (ntotalvars>0) then
+                 iof = node_list(n)%dof_index
+                 write (state_print_unit, format_string) (xx(i), i=1,node_list(n)%n_coords), &
+                            (field_variables(i,n), i=1,n_field_variables)
+              endif
+
+           endif
+        end do
+
     
         node_numbers = -node_numbers             ! Remove the - flag that suppresses duplicate prints from node numbers
 
@@ -457,6 +590,7 @@ subroutine print_state
 
         do lmn = zone_list(iz)%start_element,zone_list(iz)%end_element
             jp = element_list(lmn)%connect_index
+            auxiliary_node = n_printable_nodes
             if (zone_dimension(iz)==2) then
                 if ( element_list(lmn)%n_nodes==9 ) then
                     write (state_print_unit, *) node_numbers(connectivity(jp)), &
@@ -475,6 +609,24 @@ subroutine print_state
                         node_numbers(connectivity(jp + 5)),  &
                         node_numbers(connectivity(jp + 8)), &
                         node_numbers(connectivity(jp + 7))
+                else if ( element_list(lmn)%n_nodes==8 ) then
+                    auxiliary_node = auxiliary_node + 1
+                    write (state_print_unit, *) node_numbers(connectivity(jp)), &
+                        node_numbers(connectivity(jp + 4)), &
+                        auxiliary_node, &
+                        node_numbers(connectivity(jp + 7))
+                    write (state_print_unit, *) node_numbers(connectivity(jp+4)), &
+                        node_numbers(connectivity(jp + 1)), &
+                        node_numbers(connectivity(jp + 5)), &
+                        auxiliary_node
+                    write (state_print_unit, *) auxiliary_node, &
+                        node_numbers(connectivity(jp + 5)), &
+                        node_numbers(connectivity(jp + 2)), &
+                        node_numbers(connectivity(jp + 6))
+                    write (state_print_unit, *) node_numbers(connectivity(jp+7)), &
+                        auxiliary_node, &
+                        node_numbers(connectivity(jp + 6)), &
+                        node_numbers(connectivity(jp + 3))
                 else if ( element_list(lmn)%n_nodes==6 ) then
                     write (state_print_unit, *) node_numbers(connectivity(jp)), &
                         node_numbers(connectivity(jp + 3)), &
@@ -518,7 +670,10 @@ subroutine print_state
     if (n_field_variables>0) then
         deallocate(lumped_projection_matrix)
         deallocate(field_variables)
+        deallocate(auxiliary_field_variables)
     endif
+    deallocate(auxiliary_dof)
+    deallocate(auxiliary_dof_increment)
     deallocate(node_numbers)
 
 end subroutine print_state

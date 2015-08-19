@@ -1602,6 +1602,7 @@ subroutine read_input_file
                             if (element_list(lmn)%n_nodes == 3) cycle
                             if (element_list(lmn)%n_nodes == 4) cycle
                             if (element_list(lmn)%n_nodes == 6) cycle
+                            if (element_list(lmn)%n_nodes == 8) cycle
                             if (element_list(lmn)%n_nodes == 9) cycle
                         else if (zone_dimension(iz)==3) then
                             if (element_list(lmn)%n_nodes == 4) cycle
@@ -1773,6 +1774,7 @@ subroutine read_input_file
                     if (element_list(lmn)%n_nodes == 3) cycle
                     if (element_list(lmn)%n_nodes == 4) cycle
                     if (element_list(lmn)%n_nodes == 6) cycle
+                    if (element_list(lmn)%n_nodes == 8) cycle
                     if (element_list(lmn)%n_nodes == 9) cycle
                 else if (zone_dimension(iz)==3) then
                     if (element_list(lmn)%n_nodes == 4) cycle
