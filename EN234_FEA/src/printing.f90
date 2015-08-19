@@ -385,9 +385,7 @@ subroutine print_state
             call assemble_field_projection(zone_list(iz)%start_element,zone_list(iz)%end_element, &
                 n_field_variables,field_variable_names,field_variables)
             do n = 1,n_nodes
-                if (lumped_projection_matrix(n)>0.d0) then
-                    field_variables(1:n_field_variables,n) = field_variables(1:n_field_variables,n)/lumped_projection_matrix(n)
-                endif
+                field_variables(1:n_field_variables,n) = field_variables(1:n_field_variables,n)/lumped_projection_matrix(n)
             end do
         endif
 
@@ -713,6 +711,8 @@ subroutine assemble_projection_mass_matrix(start_element,end_element,lumped_proj
     real (prec) :: x2D(2,9)
     real (prec) :: x3D(3,20)
     real (prec) :: determinant
+    real (prec) :: mass2D(8,8)
+    real (prec) :: mass_sum
 
 
     !     Assemble a lumped projection matrix for a zone
@@ -748,19 +748,41 @@ subroutine assemble_projection_mass_matrix(start_element,end_element,lumped_proj
             if (nnodlmn == 9) n_points = 9
             if (n_points==0) cycle                             ! Nonstandard element
             call initialize_integration_points(n_points, nnodlmn, xi2, w2)
-             
-            do kint = 1,n_points
-             
-                call calculate_shapefunctions(xi2(1:2,kint),nnodlmn,N2,dNdxi2)      
-                dxdxi2 = matmul(x2D(1:2,1:nnodlmn),dNdxi2(1:nnodlmn,1:2))
-                determinant = dxdxi2(1,1)*dxdxi2(2,2) - dxdxi2(2,1)*dxdxi2(1,2)
+
+            if ( nnodlmn == 6 .or. nnodlmn == 5 ) then
+      !             Lumped projection matrix computed using diagonal scaling
+                mass2D = 0.d0
+                do kint = 1,n_points
                 !             Lumped projection matrix computed using row sum of consistent mass matrix
+                   call calculate_shapefunctions(xi2(1:2,kint),nnodlmn,N2,dNdxi2)
+                   dxdxi2 = matmul(x2D(1:2,1:nnodlmn),dNdxi2(1:nnodlmn,1:2))
+                   determinant = dxdxi2(1,1)*dxdxi2(2,2) - dxdxi2(2,1)*dxdxi2(1,2)
+                   do j = 1,nnodlmn
+                      mass2D(1:nnodlmn,j) = mass2D(1:nnodlmn,j) + N2(j)*N2(1:nnodlmn)*determinant*w2(kint)
+                   end do
+                end do
+
                 do j = 1,nnodlmn
-                    n = connectivity(element_list(lmn)%connect_index + j - 1)
-                    lumped_projection_matrix(n) = lumped_projection_matrix(n) + N2(j)*sum(N2(1:nnodlmn))*determinant*w2(kint)
+                   mass_sum = mass_sum + mass2D(j,j)
                 end do
                 
-            end do
+                do j = 1,nnodlmn
+                   n = connectivity(element_list(lmn)%connect_index + j - 1)
+                   lumped_projection_matrix(n) = lumped_projection_matrix(n) + mass2D(j,j)/mass_sum
+                end do
+
+            else
+                do kint = 1,n_points
+                !             Lumped projection matrix computed using row sum of consistent mass matrix
+                   call calculate_shapefunctions(xi2(1:2,kint),nnodlmn,N2,dNdxi2)
+                   dxdxi2 = matmul(x2D(1:2,1:nnodlmn),dNdxi2(1:nnodlmn,1:2))
+                   determinant = dxdxi2(1,1)*dxdxi2(2,2) - dxdxi2(2,1)*dxdxi2(1,2)
+                   do j = 1,nnodlmn
+                       n = connectivity(element_list(lmn)%connect_index + j - 1)
+                       lumped_projection_matrix(n) = lumped_projection_matrix(n) + N2(j)*sum(N2(1:nnodlmn))*determinant*w2(kint)
+                  end do
+                end do
+            endif
 
         else if (threeD) then
             nnodlmn = element_list(lmn)%n_nodes
@@ -870,6 +892,7 @@ subroutine assemble_field_projection(start_element,end_element,n_field_variables
             field_variables(1:n_field_variables,n) = &
                            field_variables(1:n_field_variables,n)+nodal_field_variables(1:n_field_variables,j)
         end do
+
     end do
    
    

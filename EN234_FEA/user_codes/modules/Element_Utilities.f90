@@ -71,7 +71,7 @@ contains
             A_inverse(1,1) = A(2,2)
             A_inverse(2,2) = A(1,1)
             A_inverse(1,2) = -A(1,2)
-            A_inverse(2,1) = -A_inverse(2,1)
+            A_inverse(2,1) = -A(2,1)
             IF (determinant==0.d0) THEN
                 write(IOW,*) ' Error in element utility invert'
                 write(IOW,*) ' A 2x2 matrix has a zero determinant'
@@ -412,7 +412,7 @@ contains
                 xi(2, 3) = 0.D0
                 w(3) = w(1)
             else if ( n_points==4 ) then
-                if ( n_nodes==4 .or. n_nodes==9 ) then
+                if ( n_nodes==4 .or. n_nodes==8 .or. n_nodes==9 ) then
                     !     2X2 GAUSS INTEGRATION POINTS FOR QUADRILATERAL
                     !     43
                     !     12
