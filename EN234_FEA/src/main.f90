@@ -24,6 +24,7 @@ program en234fea
 !  outfil = './Output_files/linear_elastic_3d_dynamic.out'
 !  open (UNIT = IOW, FILE = outfil, STATUS = 'unknown', ERR=500)
 
+! This simulation takes a few minutes - be patient!
 !  infil = './input_files/holeplate_3d_dynamic.in'
 !  open (unit = IOR, file = infil, status = 'old', ERR=500)
 !  outfil = './Output_files/holeplate_3d_dynamic.out'

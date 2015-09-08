@@ -39,7 +39,7 @@ subroutine explicit_dynamic_step
 
         rforce = 0.d0
         call apply_dynamic_boundaryconditions
- 
+
         if (stateprint) then
              write(IOW,*) ' '
              write(IOW,*) '  Step ',istep,' completed'
@@ -169,7 +169,7 @@ subroutine assemble_dynamic_force
     integer      :: status
     integer      :: lmn
     integer      :: ix,iu,j,n,k,iof,ns
-    integer      :: irow,i1,node1
+    integer      :: irow,i1,node1,iofr
   
   
     integer      :: nn
@@ -239,9 +239,9 @@ subroutine assemble_dynamic_force
         irow = 1
         do i1 = 1, element_list(lmn)%n_nodes
             node1 = connectivity(i1 + element_list(lmn)%connect_index - 1)
-            iof = node_list(node1)%dof_index
+            iofr = node_list(node1)%dof_index
             nn = node_list(node1)%n_dof
-            rforce(iof:iof+nn-1) = rforce(iof:iof+nn-1) + element_residual(irow:irow+nn-1)
+            rforce(iofr:iofr+nn-1) = rforce(iofr:iofr+nn-1) + element_residual(irow:irow+nn-1)
             irow = irow + nn
         end do
     end do
@@ -275,7 +275,7 @@ subroutine apply_dynamic_boundaryconditions
     real( prec ) :: ucur, dofvalue, dloadvalue, force_value
     integer :: idof, ix,iu, i,j,k, lmn, n, iof, iofs,nhist, nparam, nnodes, status
     integer :: load,flag,elset,ifac,nel,param_index,ntract,ndims,ndof,nfacenodes
-    integer :: i1,node1,irow,nn
+    integer :: i1,node1,irow,nn,iofr
     integer :: list(8)
        
        
@@ -319,7 +319,6 @@ subroutine apply_dynamic_boundaryconditions
         ifac = distributedload_list(load)%face
         nel = elementset_list(elset)%n_elements
         iof = elementset_list(elset)%index
-    
         if (flag<4) then
             do k  = 1, nel
                 lmn = element_lists(iof+k-1)
@@ -335,7 +334,7 @@ subroutine apply_dynamic_boundaryconditions
                     ntract = 1
                     traction(1) = 1.d0
                 endif
-                if (flag==2) traction = traction/dsqrt(dot_product(traction,traction))
+                if (flag==2) traction(1:ntract) = traction(1:ntract)/dsqrt(dot_product(traction(1:ntract),traction(1:ntract)))
                 if (flag>1) then
                     iof = history_list(distributedload_list(load)%history_number)%index
                     nhist = history_list(distributedload_list(load)%history_number)%n_timevals
@@ -358,18 +357,15 @@ subroutine apply_dynamic_boundaryconditions
                         element_dof_total(iu) = dof_total(node_list(n)%dof_index + i - 1)
                     end do
                 end do
-  
                 call traction_boundarycondition_dynamic(flag,ndims,ndof,nfacenodes,element_coords(1:ix),ix,&
-                    element_dof_increment(1:iu),element_dof_total(1:iu),traction(1:ntract),ntract,&
+                    element_dof_increment(1:iu),element_dof_total(1:iu),iu,traction(1:ntract),ntract,&
                     element_residual(1:iu))               ! Output variables
-
-
                 irow = 1
                 do i1 = 1,nfacenodes
                     node1 = connectivity(element_list(lmn)%connect_index + list(i1) - 1)
-                    iof = node_list(node1)%dof_index
+                    iofr = node_list(node1)%dof_index
                     nn = node_list(node1)%n_dof
-                    rforce(iof:iof+nn-1) = rforce(iof:iof+nn-1) + element_residual(irow:irow+nn-1)
+                    rforce(iofr:iofr+nn-1) = rforce(iofr:iofr+nn-1) + element_residual(irow:irow+nn-1)
                     irow = irow + nn
                 end do
             end do
@@ -461,7 +457,6 @@ subroutine apply_dynamic_boundaryconditions
         endif
    
     end do
-
 
     !     -- Prescribed DOFs
     do k = 1, n_prescribeddof
