@@ -13,10 +13,10 @@ program en234fea
 !  outfil = './Output_files/linear_elastic_3d.out'
 !  open (UNIT = IOW, FILE = outfil, STATUS = 'unknown', ERR=500)
 
-!  infil = './input_files/Holeplate_3d.in'
-!  open (unit = IOR, file = infil, status = 'old', ERR=500)
-!  outfil = './Output_files/Holeplate_3d.out'
-!  open (UNIT = IOW, FILE = outfil, STATUS = 'unknown', ERR=500)
+  infil = './input_files/Holeplate_3d.in'
+  open (unit = IOR, file = infil, status = 'old', ERR=500)
+  outfil = './Output_files/Holeplate_3d.out'
+  open (UNIT = IOW, FILE = outfil, STATUS = 'unknown', ERR=500)
 
 
 !  infil = './input_files/linear_elastic_3d_dynamic.in'
@@ -24,10 +24,10 @@ program en234fea
 !  outfil = './Output_files/linear_elastic_3d_dynamic.out'
 !  open (UNIT = IOW, FILE = outfil, STATUS = 'unknown', ERR=500)
 
-  infil = './input_files/holeplate_3d_dynamic.in'
-  open (unit = IOR, file = infil, status = 'old', ERR=500)
-  outfil = './Output_files/holeplate_3d_dynamic.out'
-  open (UNIT = IOW, FILE = outfil, STATUS = 'unknown', ERR=500)
+!  infil = './input_files/holeplate_3d_dynamic.in'
+!  open (unit = IOR, file = infil, status = 'old', ERR=500)
+!  outfil = './Output_files/holeplate_3d_dynamic.out'
+!  open (UNIT = IOW, FILE = outfil, STATUS = 'unknown', ERR=500)
 
 
 !  None of the files below will work until you write the codes that will use them!

@@ -7297,11 +7297,7 @@ END MESH
 
 
 
-%   The lines below define a set of elements
-%       ELEMENTSET, end_elements
-%          1, 2, 3, 4, 5, 6, 7, 8, 9, 10
-%          100, 101, 102, 103, 104
-%       END ELEMENT SET
+
 
 %       The DEGREE OF FREEDOM key assigns values to nodal DOFs
 %       The syntax is node set name (or number of a single node), DOF number, VALUE/HISTORY/SUBROUTINE, either a value or a history/parameter name, RATE (optional)
@@ -7322,7 +7318,7 @@ END MESH
 %           element set, face #, SUBROUTINE, subroutine parameter name
 
 %        DISTRIBUTED LOADS
-%          end_elements, 4, Value, 10.d0,0.d0,0.d0
+%          end_elements, 4, Value, 0.d0,1.d0,0.d0
 %        END DISTRIBUTED LOADS
 
 %       The CONSTRAINTS key gives a way to enforce constraints between pairs or groups of nodes.
@@ -7371,7 +7367,7 @@ END MESH
           INITIAL TIME STEP, 1.d0
           MAX TIME STEP, 1.d0
           MIN TIME STEP, 0.001d0
-          MAX NUMBER OF STEPS, 3
+          MAX NUMBER OF STEPS, 1
           STOP TIME, 10.d0
           STATE PRINT STEP INTERVAL, 1
           USER PRINT STEP INTERVAL, 1

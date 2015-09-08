@@ -40,7 +40,6 @@ subroutine traction_boundarycondition_static(flag,ndims,ndof,nfacenodes,element_
    ! Routine to compute contribution to element residual from distributed force applied to a solid element face
    
 
-
    element_residual = 0.D0
    element_stiffness = 0.d0
 
