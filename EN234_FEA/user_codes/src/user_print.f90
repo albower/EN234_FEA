@@ -20,9 +20,6 @@ subroutine user_print(n_steps)
 
 
 
-!  integer :: n, butler_volmer_flag, n1, n2, conc_print_steps
-  
-!  real (prec), save :: total_capacity
 !
 !  Use this file to process or print time histories of the solution, or to print a non-standard mesh.
 !
