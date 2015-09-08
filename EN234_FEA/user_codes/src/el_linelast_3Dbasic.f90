@@ -4,14 +4,14 @@
 
 !==========================SUBROUTINE el_linelast_3dbasic ==============================
 subroutine el_linelast_3dbasic(lmn, element_identifier, n_nodes, node_property_list, &           ! Input variables
-    n_properties, element_properties,element_coords, dof_increment, dof_total,  &               ! Input variables
-    n_state_variables, initial_state_variables, &                                               ! Input variables
-    updated_state_variables,element_stiffness,element_residual, fail)                           ! Output variables
+    n_properties, element_properties, element_coords, length_coord_array, &                      ! Input variables
+    dof_increment, dof_total, length_dof_array, &                                                ! Input variables
+    n_state_variables, initial_state_variables, &                                                ! Input variables
+    updated_state_variables,element_stiffness,element_residual, fail)      ! Output variables                          ! Output variables
     use Types
     use ParamIO
     !  use Globals, only: TIME,DTIME  For a time dependent problem uncomment this line to access the time increment and total time
     use Mesh, only : node
-    use User_Subroutine_Storage
     use Element_Utilities, only : N => shape_functions_3D
     use Element_Utilities, only : dNdxi => shape_function_derivatives_3D
     use Element_Utilities, only:  dNdx => shape_function_spatial_derivatives_3D
@@ -26,9 +26,11 @@ subroutine el_linelast_3dbasic(lmn, element_identifier, n_nodes, node_property_l
     integer, intent( in )         :: element_identifier                                     ! Flag identifying element type (specified in .in file)
     integer, intent( in )         :: n_nodes                                                ! # nodes on the element
     integer, intent( in )         :: n_properties                                           ! # properties for the element
+    integer, intent( in )         :: length_coord_array                                     ! Total # coords
+    integer, intent( in )         :: length_dof_array                                       ! Total # DOF
     integer, intent( in )         :: n_state_variables                                      ! # state variables for the element
 
-    type (node), intent( in )     :: node_property_list(length_node_array)                  ! Data structure describing storage for nodal variables - see below
+    type (node), intent( in )     :: node_property_list(n_nodes)                  ! Data structure describing storage for nodal variables - see below
     !  type node
     !      sequence
     !      integer :: flag                          ! Integer identifier
@@ -132,13 +134,13 @@ end subroutine el_linelast_3dbasic
 
 !==========================SUBROUTINE el_linelast_3dbasic_dynamic ==============================
 subroutine el_linelast_3dbasic_dynamic(lmn, element_identifier, n_nodes, node_property_list, &           ! Input variables
-    n_properties, element_properties,element_coords, dof_increment, dof_total,  &               ! Input variables
-    n_state_variables, initial_state_variables, &                                               ! Input variables
-    updated_state_variables,element_residual)                           ! Output variables
+    n_properties, element_properties,element_coords, length_coord_array, &                               ! Input variables
+    dof_increment, dof_total, length_dof_array,  &                                                       ! Input variables
+    n_state_variables, initial_state_variables, &                                                        ! Input variables
+    updated_state_variables,element_residual,element_deleted)                                            ! Output variables
     use Types
     use ParamIO
     use Mesh, only : node
-    use User_Subroutine_Storage
     use Element_Utilities, only : N => shape_functions_3D
     use Element_Utilities, only:  dNdxi => shape_function_derivatives_3D
     use Element_Utilities, only:  dNdx => shape_function_spatial_derivatives_3D
@@ -153,9 +155,11 @@ subroutine el_linelast_3dbasic_dynamic(lmn, element_identifier, n_nodes, node_pr
     integer, intent( in )         :: element_identifier                                     ! Flag identifying element type (specified in .in file)
     integer, intent( in )         :: n_nodes                                                ! # nodes on the element
     integer, intent( in )         :: n_properties                                           ! # properties for the element
+    integer, intent( in )         :: length_coord_array                                     ! Total # coords
+    integer, intent( in )         :: length_dof_array                                       ! Total # DOF
     integer, intent( in )         :: n_state_variables                                      ! # state variables for the element
 
-    type (node), intent( in )     :: node_property_list(length_node_array)                  ! Data structure describing storage for nodal variables - see below
+    type (node), intent( in )     :: node_property_list(n_nodes)                  ! Data structure describing storage for nodal variables - see below
     !  type node
     !      sequence
     !      integer :: flag                          ! Integer identifier
@@ -176,6 +180,7 @@ subroutine el_linelast_3dbasic_dynamic(lmn, element_identifier, n_nodes, node_pr
     real( prec ), intent( inout ) :: updated_state_variables(n_state_variables)             ! State variables at end of time step
     real( prec ), intent( out )   :: element_residual(length_dof_array)                     ! Element residual force (ROW)
           
+    logical, intent( inout )      :: element_deleted                                        ! Set to .true. to delete element
 
     ! Local Variables
     integer      :: n_points,kint
@@ -251,14 +256,14 @@ end subroutine el_linelast_3dbasic_dynamic
 
 !==========================SUBROUTINE fieldvars_linelast_3dbasic ==============================
 subroutine fieldvars_linelast_3dbasic(lmn, element_identifier, n_nodes, node_property_list, &           ! Input variables
-    n_properties, element_properties,element_coords, dof_increment, dof_total,  &               ! Input variables
-    n_state_variables, initial_state_variables,updated_state_variables, &                        ! Input variables
-    n_field_variables,field_variable_names, &                                                   ! Field variable definition
+    n_properties, element_properties,element_coords,length_coord_array, &                                ! Input variables
+    dof_increment, dof_total, length_dof_array,  &                                                      ! Input variables
+    n_state_variables, initial_state_variables,updated_state_variables, &                               ! Input variables
+    n_field_variables,field_variable_names, &                                                           ! Field variable definition
     nodal_fieldvariables)      ! Output variables
     use Types
     use ParamIO
     use Mesh, only : node
-    use User_Subroutine_Storage
     use Element_Utilities, only : N => shape_functions_3D
     use Element_Utilities, only: dNdxi => shape_function_derivatives_3D
     use Element_Utilities, only: dNdx => shape_function_spatial_derivatives_3D
@@ -273,10 +278,12 @@ subroutine fieldvars_linelast_3dbasic(lmn, element_identifier, n_nodes, node_pro
     integer, intent( in )         :: element_identifier                                     ! Flag identifying element type (specified in .in file)
     integer, intent( in )         :: n_nodes                                                ! # nodes on the element
     integer, intent( in )         :: n_properties                                           ! # properties for the element
+    integer, intent( in )         :: length_coord_array                                     ! Total # coords
+    integer, intent( in )         :: length_dof_array                                       ! Total # DOF
     integer, intent( in )         :: n_state_variables                                      ! # state variables for the element
     integer, intent( in )         :: n_field_variables                                      ! # field variables
 
-    type (node), intent( in )     :: node_property_list(length_node_array)                  ! Data structure describing storage for nodal variables - see below
+    type (node), intent( in )     :: node_property_list(n_nodes)                  ! Data structure describing storage for nodal variables - see below
     !  type node
     !      sequence
     !      integer :: flag                          ! Integer identifier

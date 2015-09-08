@@ -1,12 +1,20 @@
 !============================SUBROUTINE generate_node_numbers ==========================
-subroutine generate_node_numbers
+subroutine generate_node_numbers(element_start,element_end,include_constraints,node_numbers,node_order_index)
     use Types
     use ParamIO
     use Bandwidth
     use Mesh, only : n_nodes
     use Boundaryconditions, only : n_constraints
-    use Stiffness, only: node_numbers, node_order_index
+    !    use Stiffness, only: node_numbers, node_order_index
     implicit none
+
+    integer, intent(in) :: element_start
+    integer, intent(in) :: element_end
+
+    logical, intent(in) :: include_constraints
+
+    integer, intent(out) :: node_numbers(*)
+    integer, intent(out) :: node_order_index(*)
   
     ! Local Variables
     integer :: ipair, iwumax, iwvmax, n
@@ -33,11 +41,6 @@ subroutine generate_node_numbers
   
   
     !     Bandwidth minimization algorithm of Gibbs et al, SIAM J NUMER ANAL 13 (2) 1976
-  
-    if (allocated(node_numbers)) deallocate(node_numbers)
-    if (allocated(node_order_index)) deallocate(node_order_index)
-    allocate(node_numbers(n_nodes+n_constraints), stat = status)            ! This variable is used by direct solver
-    allocate(node_order_index(n_nodes+n_constraints), stat = status)        ! This variable is used by direct solver
 
     ! Local variables deallocated after use
 
@@ -76,7 +79,7 @@ subroutine generate_node_numbers
     endif
   
     !     Generate list of adjacent nodes and degree for each node
-    call compute_adjacency
+    call compute_adjacency(element_start,element_end,include_constraints)
     !     Find endpoints of pseudo-diameter
     call diam(n_nodes+n_constraints, nv, n_levels_v, node_level_v, level_list_index_v,  level_list_v, level_widths_v,  &
         iwvmax, nu, n_levels_u, node_level_u, level_list_index_u, level_list_u, level_widths_u, iwumax)
@@ -125,13 +128,18 @@ subroutine generate_node_numbers
 end subroutine generate_node_numbers
 
 !====================SUBROUTINE compute_adjacency ======================
-subroutine compute_adjacency
+subroutine compute_adjacency(element_start,element_end,include_constraints)
     use Types
     use ParamIO
     use Mesh, only : element, connectivity, element_list, n_elements, n_nodes
     use Boundaryconditions, only : constraint,nodeset, constraint_list, nodeset_list, node_lists, n_constraints
     use Bandwidth
     implicit none
+
+    integer, intent(in) :: element_start
+    integer, intent(in) :: element_end
+
+    logical, intent(in) :: include_constraints
 
     logical, allocatable :: nzstiffness(:,:)
 
@@ -160,7 +168,7 @@ subroutine compute_adjacency
 
     node_degree = 0
  
-    do lmn = 1,n_elements
+    do lmn = element_start,element_end
         do n1 = 1,element_list(lmn)%n_nodes
             node1 = connectivity(element_list(lmn)%connect_index+n1-1)
             do n2 = 1,element_list(lmn)%n_nodes
@@ -175,42 +183,44 @@ subroutine compute_adjacency
         end do
     end do
    
-    do mpc = 1, n_constraints
-        if (constraint_list(mpc)%flag<3) then
-            node1 = constraint_list(mpc)%node1
-            node2 = constraint_list(mpc)%node2
-            if (.not.nzstiffness(node1,node2)) then
-                if (node1/=node2) then
-                    node_degree(node1) = node_degree(node1) + 1
-                    node_degree(node2) = node_degree(node2) + 1
-                    nzstiffness(node1,node2) = .true.
-                    nzstiffness(node2,node1) = .true.
+    if (include_constraints) then
+        do mpc = 1, n_constraints
+            if (constraint_list(mpc)%flag<3) then
+                node1 = constraint_list(mpc)%node1
+                node2 = constraint_list(mpc)%node2
+                if (.not.nzstiffness(node1,node2)) then
+                    if (node1/=node2) then
+                        node_degree(node1) = node_degree(node1) + 1
+                        node_degree(node2) = node_degree(node2) + 1
+                        nzstiffness(node1,node2) = .true.
+                        nzstiffness(node2,node1) = .true.
+                    endif
                 endif
-            endif
-            node_degree(node1) = node_degree(node1) + 1
-            node_degree(node2) = node_degree(node2) + 1
-            node_degree(n_nodes+mpc)=node_degree(n_nodes+mpc)+2  ! Degree for Lagrange multiplier
-        else
-            ns = constraint_list(mpc)%node1
-            nnode = nodeset_list(ns)%n_nodes
-            iofc = nodeset_list(ns)%index
-            do i = 1, nnode           !     ---    Loop over nodes in set
-                node1 = node_lists(i + iofc - 1)
                 node_degree(node1) = node_degree(node1) + 1
-                do j = 1, nnode
-                    node2 = node_lists(j+iofc-1)
-                    if (nzstiffness(node1,node2)) cycle
-                    if (node1==node2) cycle
+                node_degree(node2) = node_degree(node2) + 1
+                node_degree(n_nodes+mpc)=node_degree(n_nodes+mpc)+2  ! Degree for Lagrange multiplier
+            else
+                ns = constraint_list(mpc)%node1
+                nnode = nodeset_list(ns)%n_nodes
+                iofc = nodeset_list(ns)%index
+                do i = 1, nnode           !     ---    Loop over nodes in set
+                    node1 = node_lists(i + iofc - 1)
                     node_degree(node1) = node_degree(node1) + 1
-                    node_degree(node2) = node_degree(node2) + 1
-                    nzstiffness(node1,node2) = .true.
-                    nzstiffness(node2,node1) = .true.
+                    do j = 1, nnode
+                        node2 = node_lists(j+iofc-1)
+                        if (nzstiffness(node1,node2)) cycle
+                        if (node1==node2) cycle
+                        node_degree(node1) = node_degree(node1) + 1
+                        node_degree(node2) = node_degree(node2) + 1
+                        nzstiffness(node1,node2) = .true.
+                        nzstiffness(node2,node1) = .true.
+                    end do
                 end do
-            end do
-            node_degree(n_nodes+mpc) = node_degree(n_nodes+mpc)+nnode  ! Degree for Lagrange multiplier
-        endif
-    end do
- 
+                node_degree(n_nodes+mpc) = node_degree(n_nodes+mpc)+nnode  ! Degree for Lagrange multiplier
+            endif
+        end do
+    endif
+
     length_node_adjacency = 0
     do i = 1,n_nodes+n_constraints
         if (node_degree(i)>0)  length_node_adjacency = length_node_adjacency + int(node_degree(i)/databinsize)+1
@@ -236,7 +246,7 @@ subroutine compute_adjacency
     last_filled_node_adjacency = 0
   
     !     Loop over all elements
-    do lmn = 1, n_elements
+    do lmn = element_start, element_end
 
         !     For each node on current element add other nodes
         !     on same element to adjacency list
@@ -257,65 +267,66 @@ subroutine compute_adjacency
         end do
     end do
 
-    do nc = 1,n_constraints    !     Loop over constraint sets
-        if (constraint_list(nc)%flag<3) then    ! Simple 2 node constraint
-            node1 = constraint_list(nc)%node1
-            node2 = constraint_list(nc)%node2
-            if (node_adjacency_index(n_nodes+nc)==0) then
-                last_filled_node_adjacency = last_filled_node_adjacency + 1
-                node_adjacency_index(n_nodes+nc) = last_filled_node_adjacency
-            endif
-            start_index = node_adjacency_index(n_nodes+nc)
-            call adddistinctlistdata(start_index,node_adjacency,last_filled_node_adjacency,node1)
-            call adddistinctlistdata(start_index,node_adjacency,last_filled_node_adjacency,node2)
-            if (node_adjacency_index(node1)==0) then
-                last_filled_node_adjacency = last_filled_node_adjacency + 1
-                node_adjacency_index(node1) = last_filled_node_adjacency
-            endif
-            start_index = node_adjacency_index(node1)
-            call adddistinctlistdata(start_index,node_adjacency,last_filled_node_adjacency,n_nodes+nc)
-            if (node_adjacency_index(node2)==0) then
-                last_filled_node_adjacency = last_filled_node_adjacency + 1
-                node_adjacency_index(node2) = last_filled_node_adjacency
-            endif
-            start_index = node_adjacency_index(node2)
-            call adddistinctlistdata(start_index,node_adjacency,last_filled_node_adjacency,n_nodes+nc)
-            if (node1==node2) cycle
-            start_index = node_adjacency_index(node1)
-            call adddistinctlistdata(start_index,node_adjacency,last_filled_node_adjacency,node2) ! Add node2 to adjacency list for node 1 (if not already present)
-            start_index = node_adjacency_index(node2)
-            call adddistinctlistdata(start_index,node_adjacency,last_filled_node_adjacency,node1) ! Add node1 to adjacency list for node 2 (if not already present)
-        else if (constraint_list(nc)%flag==3) then   !  General multi-point constraint
-            ns = constraint_list(nc)%node1            !  Node set listing nodes
-            iof = nodeset_list(ns)%index
-            nnodes = nodeset_list(ns)%n_nodes
-            do i = 1,nnodes
-                node1 = node_lists(iof+i-1)
+    if (include_constraints) then
+        do nc = 1,n_constraints    !     Loop over constraint sets
+            if (constraint_list(nc)%flag<3) then    ! Simple 2 node constraint
+                node1 = constraint_list(nc)%node1
+                node2 = constraint_list(nc)%node2
+                if (node_adjacency_index(n_nodes+nc)==0) then
+                    last_filled_node_adjacency = last_filled_node_adjacency + 1
+                    node_adjacency_index(n_nodes+nc) = last_filled_node_adjacency
+                endif
+                start_index = node_adjacency_index(n_nodes+nc)
+                call adddistinctlistdata(start_index,node_adjacency,last_filled_node_adjacency,node1)
+                call adddistinctlistdata(start_index,node_adjacency,last_filled_node_adjacency,node2)
                 if (node_adjacency_index(node1)==0) then
                     last_filled_node_adjacency = last_filled_node_adjacency + 1
                     node_adjacency_index(node1) = last_filled_node_adjacency
                 endif
                 start_index = node_adjacency_index(node1)
                 call adddistinctlistdata(start_index,node_adjacency,last_filled_node_adjacency,n_nodes+nc)
-                do j = 1,nnodes
-                    node2 = node_lists(iof+j-1)
-                    if (node2==node1) cycle
-                    call adddistinctlistdata(start_index,node_adjacency,last_filled_node_adjacency,node2)
+                if (node_adjacency_index(node2)==0) then
+                    last_filled_node_adjacency = last_filled_node_adjacency + 1
+                    node_adjacency_index(node2) = last_filled_node_adjacency
+                endif
+                start_index = node_adjacency_index(node2)
+                call adddistinctlistdata(start_index,node_adjacency,last_filled_node_adjacency,n_nodes+nc)
+                if (node1==node2) cycle
+                start_index = node_adjacency_index(node1)
+                call adddistinctlistdata(start_index,node_adjacency,last_filled_node_adjacency,node2) ! Add node2 to adjacency list for node 1 (if not already present)
+                start_index = node_adjacency_index(node2)
+                call adddistinctlistdata(start_index,node_adjacency,last_filled_node_adjacency,node1) ! Add node1 to adjacency list for node 2 (if not already present)
+            else if (constraint_list(nc)%flag==3) then   !  General multi-point constraint
+                ns = constraint_list(nc)%node1            !  Node set listing nodes
+                iof = nodeset_list(ns)%index
+                nnodes = nodeset_list(ns)%n_nodes
+                do i = 1,nnodes
+                    node1 = node_lists(iof+i-1)
+                    if (node_adjacency_index(node1)==0) then
+                        last_filled_node_adjacency = last_filled_node_adjacency + 1
+                        node_adjacency_index(node1) = last_filled_node_adjacency
+                    endif
+                    start_index = node_adjacency_index(node1)
+                    call adddistinctlistdata(start_index,node_adjacency,last_filled_node_adjacency,n_nodes+nc)
+                    do j = 1,nnodes
+                        node2 = node_lists(iof+j-1)
+                        if (node2==node1) cycle
+                        call adddistinctlistdata(start_index,node_adjacency,last_filled_node_adjacency,node2)
+                    end do
                 end do
-            end do
-            if (node_adjacency_index(n_nodes+nc)==0) then
-                last_filled_node_adjacency = last_filled_node_adjacency + 1
-                node_adjacency_index(n_nodes+nc) = last_filled_node_adjacency
-            endif
-            start_index = node_adjacency_index(n_nodes+nc)
-            do i = 1,nnodes
-                node1 = node_lists(iof+i-1)
-                call adddistinctlistdata(start_index,node_adjacency,last_filled_node_adjacency,node1)
-            end do
-        end if
+                if (node_adjacency_index(n_nodes+nc)==0) then
+                    last_filled_node_adjacency = last_filled_node_adjacency + 1
+                    node_adjacency_index(n_nodes+nc) = last_filled_node_adjacency
+                endif
+                start_index = node_adjacency_index(n_nodes+nc)
+                do i = 1,nnodes
+                    node1 = node_lists(iof+i-1)
+                    call adddistinctlistdata(start_index,node_adjacency,last_filled_node_adjacency,node1)
+                end do
+            end if
     
-    end do
-
+        end do
+    endif
     return
 
 end subroutine compute_adjacency
@@ -427,7 +438,7 @@ subroutine diam(nops, nv, n_levels_v, node_level_v, level_list_index_v,  level_l
             i = i + 1
             ns = level_node_list(sort_index(i))
             call levgen(nops,ideg, ns, node_level_s, level_list_index_s, &
-                        level_list_s, level_widths_s, n_levels_s, iwsmax, workspace)
+                level_list_s, level_widths_s, n_levels_s, iwsmax, workspace)
 
             !     If depth of new level structure is greater than that of old one, swap over and start again
 
@@ -592,7 +603,7 @@ subroutine widmin(nops, node_level_v, iwvmax, n_levels_u, node_level_u,  &
             nstrt = i
             !     ---   Find all nodes connected to current one by generating levels
             call levgen(nops,ideg2, nstrt, node_level_s, level_list_index_s, &
-                        level_list_s, level_widths_s, n_levels_s, iwsmax, workspace)
+                level_list_s, level_widths_s, n_levels_s, iwsmax, workspace)
             !     ---   Add nodes in level structure to connected component
             ncon = ncon + 1
             connected_component_index(ncon) = last_filled_connected_component+1

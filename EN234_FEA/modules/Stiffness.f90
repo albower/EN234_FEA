@@ -46,7 +46,7 @@
   integer, save, allocatable :: equation_adjacency_index(:)  !  Points to first data block 
   type (Integer_Linked_List), save, allocatable :: equation_adjacency(:)  ! Linked data block list of index in aupp 
   
-  real (prec), save, allocatable :: p(:)            ! Workspace array for 
+  real (prec), save, allocatable :: p(:)            ! Workspace arrays for CG solver
   real (prec), save, allocatable :: r(:)
   real (prec), save, allocatable :: z(:)
   real (prec), save, allocatable :: precon(:)

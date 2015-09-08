@@ -1,6 +1,6 @@
 %
-%             Demonstration input file for simple general purpose FEA code EN234FEA
-%                                    A.F. Bower, August 2015
+%             Demonstration input file for simple general purpose FEA code FEACHEAP
+%                                    A.F. Bower, August 2011
 %
 %             This example illustrates a simple 3D elastostatic boundary value problem with 8 noded brick elements
 %             The element subroutines are in el_linelast_3Dbasic.f90.
@@ -4131,17 +4131,17 @@ END NODES
 %     The parameters are no. nodes on the element, no. properties, total no. state variables, integer identifier  
       ELEMENTS
 
-       PARAMETERS, 8, 0, 1001
+       PARAMETERS, 8, 0, 1002
 %       Define element properties - the values are passed to user subroutine elstif in the order they are listed here
-%       For the example provided, the params are Youngs Modulus, Poissons ratio 
+%       For the example provided, the params are Youngs Modulus, Poissons ratio and thermal expansion coeft
         PROPERTIES
-         100.d0, 0.3d0
+         10.d0, 1000.d0
         END PROPERTIES
 %     Define mass density (for explicity dynamics only)
 %       DENSITY, 10.d0
 %     Define element connectivity
 %     The element number (first number in the list) is optional, and is ignored in the code
-        CONNECTIVITY, soft
+        CONNECTIVITY
  1,  181,  201,   18,   17,  865,  885,  702,  701
    2,  201,  202,   19,   18,  885,  886,  703,  702
    3,  202,  203,   20,   19,  886,  887,  704,  703
@@ -7230,7 +7230,7 @@ END MESH
 %       The HISTORY key defines a time history that can be applied to DOFs or distributed loads
         HISTORY, dof_history
           0.d0, 0.d0
-         10.d0, 0.1d0
+         3.d0,  3.d0
         END HISTORY
 
         HISTORY, dload_history
@@ -7295,52 +7295,22 @@ END MESH
 
 
 
+       NODESET, node1
+    3
+       END NODESET
 
-
-%   The lines below define a set of elements
-%       ELEMENTSET, end_elements
-%          1, 2, 3, 4, 5, 6, 7, 8, 9, 10
-%          100, 101, 102, 103, 104
-%       END ELEMENT SET
 
 %       The DEGREE OF FREEDOM key assigns values to nodal DOFs
-%       The syntax is node set name (or number of a single node), DOF number, VALUE/HISTORY/SUBROUTINE, either a value or a history/parameter name, RATE (optional)
+%       The syntax is node set name, DOF number, VALUE/HISTORY/SUBROUTINE, either a value or a history/parameter name, RATE (optional)
 %     
         DEGREES OF FREEDOM
-           3, 3, VALUE, 0.d0
+           node1, 3, VALUE, 0.d0
            bot, 2, VALUE,  0.d0
            left, 1, VALUE, 0.d0
            right, 1, HISTORY, dof_history
         END DEGREES OF FREEDOM
 
 
-%       The DISTRIBUTED LOAD key sets up prescribed tractions on element faces
-%       The syntax is one of the following options:
-%           element set, face #, VALUE, tx,ty,(tz)        (applies constant pressure to element face in direction DOF)
-%           element set, face #, HISTORY,history name, nx,ny,(nz) (time dependent pressure to element face in direction (nx,ny,nz))
-%           element set, face #, NORMAL, history name     (applies time dependent pressure normal to element face)
-%           element set, face #, SUBROUTINE, subroutine parameter name
-
-%        DISTRIBUTED LOADS
-%          end_elements, 4, Value, 10.d0,0.d0,0.d0
-%        END DISTRIBUTED LOADS
-
-%       The CONSTRAINTS key gives a way to enforce constraints between pairs or groups of nodes.
-%       Useful, e.g. for periodic boundary conditions.
-%
-%      CONSTRAINT PARAMETERS, constraint_params
-%          1.d-08
-%      END CONSTRAINT PARAMETERS
-%
-%       The syntax is
-%       CONSTRAINTS
-%          CONSTRAIN NODE PAIRS, # of nodes pairs, node number or nodeset1, DOF1, node number or nodeset2, DOF2, parameter list name (optional)
-%          TIE NODES, # of nodes to be tied, nodeset1, DOF1, reference node number, DOF2, parameter list (optional)
-%          CONSTRAIN NODE SET, # of nodes in constraint, nodeset, dof list (use a node set to define the list), parameter list
-%           CONSTRAIN NODE PAIRS, 5, tie_test_1, 1, tie_test_2,1, constraint_params
-%           CONSTRAIN NODE SET, 5, tie_test_1, tie_test_2, constraint_params
-%           TIE NODES, 5, tie_test_1, 1, 500, 1, constraint_params
-%        END CONSTRAINTS
 
    END BOUNDARY CONDITIONS
 
@@ -7348,7 +7318,7 @@ END MESH
 
 %  Print the initial mesh to a file named initial_mesh.dat
 
-   PRINT INITIAL MESH, Output_files\initial_mesh.dat
+   PRINT INITIAL MESH, initial_mesh.dat
 
 %   The CHECK STIFFNESS key tests the element subroutine to ensure that
 %   the residual force vector is consistent with the stiffness
@@ -7368,10 +7338,10 @@ END MESH
 %        These parameters are passed to subroutine staticstep.
 %        The parameters must be entered in the correct order
 
-          INITIAL TIME STEP, 1.d0
+          INITIAL TIME STEP, 0.25d0
           MAX TIME STEP, 1.d0
           MIN TIME STEP, 0.001d0
-          MAX NUMBER OF STEPS, 3
+          MAX NUMBER OF STEPS, 12
           STOP TIME, 10.d0
           STATE PRINT STEP INTERVAL, 1
           USER PRINT STEP INTERVAL, 1
@@ -7384,13 +7354,13 @@ END MESH
 %        Factor will work on anything but might be slow for large equation systems.   
 %        Conjugate gradient works well for elasticity problems but is not so good for unsymmetric matrices
 %        GMRES is slower than conjugate gradient but may be faster than factoring for large 3D systems.
-%        Its convergence for unsymmetric systems is more likely than conjugate gradient but somewhat unpredictable.
+%        Its onvergence for unsymmetric systems is more likely than conjugate gradient but somewhat unpredictable.
 %                        LINEAR for linear equations, NONLINEAR for nonlinear equations
 %                        For nonlinear solver, must specify convergence tolerance and max # iterations
 %                        UNSYMMETRIC  (optional - only for unsymmetric stiffness)
 
 
-         SOLVER, DIRECT, LINEAR
+         SOLVER, DIRECT, NONLINEAR, 1.d-05,15, UNSYMMETRIC
 
 
 
@@ -7401,17 +7371,7 @@ END MESH
             DISPLACEMENT SCALE FACTOR, 1.d0
          END PRINT STATE
 
-%       The lines below are just examples - they will do nothing for this simulation (no code exists to interpret them)
-%          USER PRINT FILES
-%          List file names to contain the output. Fortran unit numbers are provided to each file in the user subroutine
-%            filename1.dat
-%            filename2.dat
-%          END USER PRINT FILES
-%          USER PRINT PARAMETERS
-%            list of parameters to be passed to the subroutine
-%             1.d0, 6.d0
-%             4
-%          END USER print PARAMETERS
+
 
         END STATIC STEP
          

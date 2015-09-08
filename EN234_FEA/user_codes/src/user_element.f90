@@ -3,23 +3,25 @@
 
 !=========================== subroutine user_element_stiffness ===================
 subroutine user_element_static(lmn, element_identifier, n_nodes, node_property_list, &           ! Input variables
-    n_properties, element_properties,element_coords, dof_increment, dof_total,  &                  ! Input variables
-    n_state_variables, initial_state_variables, &                                                  ! Input variables
+    n_properties, element_properties, element_coords, length_coord_array, &                      ! Input variables
+    dof_increment, dof_total, length_dof_array, &                                                ! Input variables
+    n_state_variables, initial_state_variables, &                                                ! Input variables
     updated_state_variables,element_stiffness,element_residual, fail)      ! Output variables
     use Types
     use ParamIO
     use Globals, only: TIME, DTIME                  ! Total analysis time and time increment
     use Mesh, only : node
-    use User_Subroutine_Storage
     implicit none
 
     integer, intent( in )         :: lmn                                                    ! Element number
     integer, intent( in )         :: element_identifier                                     ! Flag identifying element type (specified in .in file)
     integer, intent( in )         :: n_nodes                                                ! # nodes on the element
     integer, intent( in )         :: n_properties                                           ! # properties for the element
+    integer, intent( in )         :: length_coord_array                                     ! # coordinate variables
+    integer, intent( in )         :: length_dof_array                                       ! Total # DOFs
     integer, intent( in )         :: n_state_variables                                      ! # state variables for the element
 
-    type (node), intent( in )     :: node_property_list(length_node_array)                  ! Data structure describing storage for nodal variables - see below
+    type (node), intent( in )     :: node_property_list(n_nodes)                  ! Data structure describing storage for nodal variables - see below
     !  type node
     !      sequence
     !      integer :: flag                          ! Integer identifier
@@ -53,21 +55,23 @@ subroutine user_element_static(lmn, element_identifier, n_nodes, node_property_l
 
     updated_state_variables = initial_state_variables
 
+
     if ( element_identifier == 1001 ) then              ! Basic fully integrated 3D linear elastic element
 
         call el_linelast_3dbasic(lmn, element_identifier, n_nodes, node_property_list, &           ! Input variables
-            n_properties, element_properties,element_coords, dof_increment, dof_total,  &               ! Input variables
-            n_state_variables, initial_state_variables, &                                               ! Input variables
-            updated_state_variables,element_stiffness,element_residual, fail)
-  
+    n_properties, element_properties, element_coords, length_coord_array, &                      ! Input variables
+    dof_increment, dof_total, length_dof_array, &                                                ! Input variables
+    n_state_variables, initial_state_variables, &                                                ! Input variables
+    updated_state_variables,element_stiffness,element_residual, fail)      ! Output variables
+
 
     else if ( element_identifier ==0) then           ! Stub for a new element
   
         call new_user_element_static(lmn, element_identifier, n_nodes, node_property_list, &           ! Input variables
-            n_properties, element_properties,element_coords, dof_increment, dof_total,  &                   ! Input variables
-            n_state_variables, initial_state_variables, &                                                   ! Input variables
-            updated_state_variables,element_stiffness,element_residual, fail)
-  
+    n_properties, element_properties, element_coords, length_coord_array, &                      ! Input variables
+    dof_increment, dof_total, length_dof_array, &                                                ! Input variables
+    n_state_variables, initial_state_variables, &                                                ! Input variables
+    updated_state_variables,element_stiffness,element_residual, fail)      ! Output variables
   
   
     else
@@ -85,25 +89,27 @@ subroutine user_element_static(lmn, element_identifier, n_nodes, node_property_l
 end subroutine user_element_static
 
 
-!=========================== subroutine user_element_dynamic ===================
+!=========================== subroutine user_element_stiffness ===================
 subroutine user_element_dynamic(lmn, element_identifier, n_nodes, node_property_list, &           ! Input variables
-    n_properties, element_properties,element_coords, dof_increment, dof_total,  &                  ! Input variables
+    n_properties, element_properties,element_coords,length_coord_array, &                         ! Input variables
+    dof_increment, dof_total, length_dof_array, &                                                  ! Input variables
     n_state_variables, initial_state_variables, &                                                  ! Input variables
-    updated_state_variables,element_residual)      ! Output variables
+    updated_state_variables,element_residual,element_deleted)      ! Output variables
     use Types
     use ParamIO
     use Globals, only: TIME, DTIME                  ! Total analysis time and time increment
     use Mesh, only : node
-    use User_Subroutine_Storage
     implicit none
 
     integer, intent( in )         :: lmn                                                    ! Element number
     integer, intent( in )         :: element_identifier                                     ! Flag identifying element type (specified in .in file)
     integer, intent( in )         :: n_nodes                                                ! # nodes on the element
     integer, intent( in )         :: n_properties                                           ! # properties for the element
+    integer, intent( in )         :: length_coord_array                                     ! Total # coords
+    integer, intent( in )         :: length_dof_array                                       ! Total # DOF
     integer, intent( in )         :: n_state_variables                                      ! # state variables for the element
 
-    type (node), intent( in )     :: node_property_list(length_node_array)                  ! Data structure describing storage for nodal variables - see below
+    type (node), intent( in )     :: node_property_list(n_nodes)                  ! Data structure describing storage for nodal variables - see below
     !  type node
     !      sequence
     !      integer :: flag                          ! Integer identifier
@@ -124,30 +130,32 @@ subroutine user_element_dynamic(lmn, element_identifier, n_nodes, node_property_
     real( prec ), intent( inout )  :: updated_state_variables(n_state_variables)             ! State variables at end of time step
     real( prec ), intent( out )   :: element_residual(length_dof_array)                     ! Element residual force (ROW)
 
-
+    logical, intent( inout )      :: element_deleted                                        ! Set to .true. to delete an element
     !     Element force routine for explicit dynamic analysis
 
     
     element_residual = 0.d0
-
+    element_deleted = .false.
 
     updated_state_variables = initial_state_variables
 
     if ( element_identifier == 1001 ) then              ! Basic fully integrated 3D linear elastic element
 
         call el_linelast_3dbasic_dynamic(lmn, element_identifier, n_nodes, node_property_list, &           ! Input variables
-            n_properties, element_properties,element_coords, dof_increment, dof_total,  &               ! Input variables
-            n_state_variables, initial_state_variables, &                                               ! Input variables
-            updated_state_variables,element_residual)
-  
+            n_properties, element_properties,element_coords, length_coord_array, &                         ! Input variables
+            dof_increment, dof_total, length_dof_array,  &                                                 ! Input variables
+            n_state_variables, initial_state_variables, &                                                  ! Input variables
+            updated_state_variables,element_residual,element_deleted)                                      ! Output variables
+
+
     else if ( element_identifier ==0) then               ! Stub for a new element
   
         call new_user_element_dynamic(lmn, element_identifier, n_nodes, node_property_list, &           ! Input variables
-            n_properties, element_properties,element_coords, dof_increment, dof_total,  &                   ! Input variables
-            n_state_variables, initial_state_variables, &                                                   ! Input variables
-            updated_state_variables,element_residual)
+            n_properties, element_properties,element_coords, length_coord_array, &                         ! Input variables
+            dof_increment, dof_total, length_dof_array,  &                                                 ! Input variables
+            n_state_variables, initial_state_variables, &                                                  ! Input variables
+            updated_state_variables,element_residual,element_deleted)                                      ! Output variables
   
-
     else
         write (IOW, 99001) element_identifier
         stop
@@ -163,24 +171,26 @@ subroutine user_element_dynamic(lmn, element_identifier, n_nodes, node_property_
 end subroutine user_element_dynamic
 
 subroutine user_element_fieldvariables(lmn, element_identifier, n_nodes, node_property_list, &           ! Input variables
-    n_properties, element_properties,element_coords, dof_increment, dof_total,  &                       ! Input variables
-    n_state_variables, initial_state_variables,updated_state_variables, &                               ! Input variables
-    n_field_variables,field_variable_names, &                                                           ! Field variable definition
-    nodal_fieldvariables)      ! Output variables
+    n_properties, element_properties,element_coords, length_coord_array, &                               ! Input variables
+    dof_increment, dof_total, length_dof_array, &                                                        ! Input variables
+    n_state_variables, initial_state_variables,updated_state_variables, &                                ! Input variables
+    n_field_variables,field_variable_names, &                                                            ! Field variable definition
+    nodal_fieldvariables)                                                                                ! Output variables
     use Types
     use ParamIO
     use Mesh, only : node
-    use User_Subroutine_Storage
     implicit none
 
     integer, intent( in )         :: lmn                                                    ! Element number
     integer, intent( in )         :: element_identifier                                     ! Flag identifying element type (specified in .in file)
     integer, intent( in )         :: n_nodes                                                ! # nodes on the element
     integer, intent( in )         :: n_properties                                           ! # properties for the element
+    integer, intent( in )         :: length_coord_array                                     ! Total # coords
+    integer, intent( in )         :: length_dof_array                                       ! Total # DOF
     integer, intent( in )         :: n_state_variables                                      ! # state variables for the element
     integer, intent( in )         :: n_field_variables                                      ! # field variables
 
-    type (node), intent( in )     :: node_property_list(length_node_array)                  ! Data structure describing storage for nodal variables - see below
+    type (node), intent( in )     :: node_property_list(n_nodes)                            ! Data structure describing storage for nodal variables - see below
     !  type node
     !      sequence
     !      integer :: flag                          ! Integer identifier
@@ -204,27 +214,36 @@ subroutine user_element_fieldvariables(lmn, element_identifier, n_nodes, node_pr
     real( prec ), intent( out )   :: nodal_fieldvariables(n_field_variables,n_nodes)        ! Element stiffness (ROW,COLUMN)
 
 
+
     if ( element_identifier == 1001 ) then              ! Basic fully integrated 3D linear elastic element
 
-        call fieldvars_linelast_3dbasic(lmn, element_identifier, n_nodes, node_property_list, &           ! Input variables
-            n_properties, element_properties,element_coords, dof_increment, dof_total,  &               ! Input variables
+        call fieldvars_linelast_3dbasic(lmn, element_identifier, n_nodes, node_property_list, &         ! Input variables
+            n_properties, element_properties,element_coords, length_coord_array,  &                     ! Input variables
+            dof_increment, dof_total, length_dof_array,  &                                              ! Input variables
             n_state_variables, initial_state_variables,updated_state_variables, &                       ! Input variables
             n_field_variables,field_variable_names, &                                                   ! Field variable definition
             nodal_fieldvariables)      ! Output variables
-  
 
-    else  if ( element_identifier == 0 ) then              ! Stub for a new element
+        else if ( element_identifier == 0 ) then
+            call new_user_element_fieldvariables(lmn, element_identifier, n_nodes, node_property_list, &           ! Input variables
+                n_properties, element_properties,element_coords, length_coord_array, &                                   ! Input variables
+                dof_increment, dof_total, length_dof_array, &                                                            ! Input variables
+                n_state_variables, initial_state_variables,updated_state_variables, &                                    ! Input variables
+                n_field_variables,field_variable_names, &                                                                ! Field variable definition
+                nodal_fieldvariables)      ! Output variables
 
-        call new_user_element_fieldvariables(lmn, element_identifier, n_nodes, node_property_list, &           ! Input variables
-            n_properties, element_properties,element_coords, dof_increment, dof_total,  &               ! Input variables
-            n_state_variables, initial_state_variables,updated_state_variables, &                       ! Input variables
-            n_field_variables,field_variable_names, &                                                   ! Field variable definition
-            nodal_fieldvariables)      ! Output variables
- 
-    else
+        else
 
-    !    write (IOW, 99001) iep
-    stop
+        write (IOW, 99001) element_identifier
+        stop
+
+99001 format ( // ' **** ERROR DETECTED IN SUBROUTINE user_element_fieldvariables ****'/  &
+        '   Invalid element type was specified '/, &
+        '   Current element types are: '/  &
+        '     IEP=1001     Basic fully integrated 3D linear elastic element       '/&
+        '    Subroutine called with IEP = ', I10)
+
+
 
 end if
 
@@ -234,12 +253,14 @@ end subroutine user_element_fieldvariables
 
 
 subroutine user_element_lumped_mass(lmn, element_identifier, n_nodes, node_property_list, &           ! Input variables
-    density,n_properties, element_properties,element_coords, dof_increment, dof_total,  &                  ! Input variables
-    n_state_variables, initial_state_variables, &                                                  ! Input variables
+    density,n_properties, element_properties,element_coords,length_coord_array, &                     ! Input variables
+    dof_increment, dof_total, length_dof_array, &                                                     ! Input variables
+    n_state_variables, initial_state_variables, &                                                     ! Input variables
     updated_state_variables,element_lumped_mass)      ! Output variables
     use Types
     use ParamIO
     use Globals, only: TIME, DTIME                  ! Total analysis time and time increment
+    use Mesh, only : node
     use Element_Utilities, only : N3 => shape_functions_3D
     use Element_Utilities, only : dNdxi3 => shape_function_derivatives_3D
     use Element_Utilities, only : dNdx3 => shape_function_spatial_derivatives_3D
@@ -252,17 +273,19 @@ subroutine user_element_lumped_mass(lmn, element_identifier, n_nodes, node_prope
     use Element_Utilities, only : dxdxi2 => jacobian_2D
     use Element_Utilities, only : initialize_integration_points
     use Element_Utilities, only : calculate_shapefunctions
-    use Mesh, only : node
-    use User_Subroutine_Storage
+
+
     implicit none
 
     integer, intent( in )         :: lmn                                                    ! Element number
     integer, intent( in )         :: element_identifier                                     ! Flag identifying element type (specified in .in file)
     integer, intent( in )         :: n_nodes                                                ! # nodes on the element
     integer, intent( in )         :: n_properties                                           ! # properties for the element
+    integer, intent( in )         :: length_coord_array                                     ! Total # coords
+    integer, intent( in )         :: length_dof_array                                       ! Total # DOF
     integer, intent( in )         :: n_state_variables                                      ! # state variables for the element
 
-    type (node), intent( in )     :: node_property_list(length_node_array)                  ! Data structure describing storage for nodal variables - see below
+    type (node), intent( in )     :: node_property_list(n_nodes)                  ! Data structure describing storage for nodal variables - see below
     !  type node
     !      sequence
     !      integer :: flag                          ! Integer identifier

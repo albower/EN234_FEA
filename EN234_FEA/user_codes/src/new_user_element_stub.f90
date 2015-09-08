@@ -2,24 +2,26 @@
 !     Subroutines to assemble element level matrices for FEA analysis
 
 !=========================== subroutine user_element_stiffness ===================
-subroutine new_user_element_static(lmn, element_identifier, n_nodes, node_property_list, &          ! Input variables
-    n_properties, element_properties,element_coords, dof_increment, dof_total,  &                  ! Input variables
-    n_state_variables, initial_state_variables, &                                                  ! Input variables
+subroutine new_user_element_static(lmn, element_identifier, n_nodes, node_property_list, &           ! Input variables
+    n_properties, element_properties, element_coords, length_coord_array, &                      ! Input variables
+    dof_increment, dof_total, length_dof_array, &                                                ! Input variables
+    n_state_variables, initial_state_variables, &                                                ! Input variables
     updated_state_variables,element_stiffness,element_residual, fail)      ! Output variables
     use Types
     use ParamIO
     use Globals, only: TIME, DTIME                  ! Total analysis time and time increment
     use Mesh, only : node
-    use User_Subroutine_Storage
     implicit none
 
     integer, intent( in )         :: lmn                                                    ! Element number
     integer, intent( in )         :: element_identifier                                     ! Flag identifying element type (specified in .in file)
     integer, intent( in )         :: n_nodes                                                ! # nodes on the element
     integer, intent( in )         :: n_properties                                           ! # properties for the element
+    integer, intent( in )         :: length_coord_array                                     ! Total # coords
+    integer, intent( in )         :: length_dof_array                                       ! Total # DOF
     integer, intent( in )         :: n_state_variables                                      ! # state variables for the element
 
-    type (node), intent( in )     :: node_property_list(length_node_array)                  ! Data structure describing storage for nodal variables - see below
+    type (node), intent( in )     :: node_property_list(n_nodes)                  ! Data structure describing storage for nodal variables - see below
     !  type node
     !      sequence
     !      integer :: flag                          ! Integer identifier
@@ -47,25 +49,27 @@ subroutine new_user_element_static(lmn, element_identifier, n_nodes, node_proper
 end subroutine new_user_element_static
 
 
-!=========================== subroutine user_element_stiffness ===================
+!=========================== subroutine user_element_dynamic ===================
 subroutine new_user_element_dynamic(lmn, element_identifier, n_nodes, node_property_list, &           ! Input variables
-    n_properties, element_properties,element_coords, dof_increment, dof_total,  &                  ! Input variables
-    n_state_variables, initial_state_variables, &                                                  ! Input variables
-    updated_state_variables,element_residual)      ! Output variables
+    n_properties, element_properties,element_coords, length_coord_array, &                            ! Input variables
+    dof_increment, dof_total, length_dof_array, &                                                     ! Input variables
+    n_state_variables, initial_state_variables, &                                                     ! Input variables
+    updated_state_variables,element_residual,element_deleted)      ! Output variables
     use Types
     use ParamIO
     use Globals, only: TIME, DTIME                  ! Total analysis time and time increment
     use Mesh, only : node
-    use User_Subroutine_Storage
     implicit none
 
     integer, intent( in )         :: lmn                                                    ! Element number
     integer, intent( in )         :: element_identifier                                     ! Flag identifying element type (specified in .in file)
     integer, intent( in )         :: n_nodes                                                ! # nodes on the element
     integer, intent( in )         :: n_properties                                           ! # properties for the element
+    integer, intent( in )         :: length_coord_array                                     ! Total # coords
+    integer, intent( in )         :: length_dof_array                                       ! Total # DOF
     integer, intent( in )         :: n_state_variables                                      ! # state variables for the element
 
-    type (node), intent( in )     :: node_property_list(length_node_array)                  ! Data structure describing storage for nodal variables - see below
+    type (node), intent( in )     :: node_property_list(n_nodes)                            ! Data structure describing storage for nodal variables - see below
     !  type node
     !      sequence
     !      integer :: flag                          ! Integer identifier
@@ -86,30 +90,33 @@ subroutine new_user_element_dynamic(lmn, element_identifier, n_nodes, node_prope
     real( prec ), intent( inout )  :: updated_state_variables(n_state_variables)             ! State variables at end of time step
     real( prec ), intent( out )   :: element_residual(length_dof_array)                     ! Element residual force (ROW)
 
+    logical, intent( inout )       :: element_deleted                                       ! Set to .true. to delete an element
 
     return
 
 end subroutine new_user_element_dynamic
 
 subroutine new_user_element_fieldvariables(lmn, element_identifier, n_nodes, node_property_list, &           ! Input variables
-    n_properties, element_properties,element_coords, dof_increment, dof_total,  &                       ! Input variables
-    n_state_variables, initial_state_variables,updated_state_variables, &                               ! Input variables
-    n_field_variables,field_variable_names, &                                                           ! Field variable definition
+    n_properties, element_properties,element_coords, length_coord_array, &                                   ! Input variables
+    dof_increment, dof_total, length_dof_array, &                                                            ! Input variables
+    n_state_variables, initial_state_variables,updated_state_variables, &                                    ! Input variables
+    n_field_variables,field_variable_names, &                                                                ! Field variable definition
     nodal_fieldvariables)      ! Output variables
     use Types
     use ParamIO
     use Mesh, only : node
-    use User_Subroutine_Storage
     implicit none
 
     integer, intent( in )         :: lmn                                                    ! Element number
     integer, intent( in )         :: element_identifier                                     ! Flag identifying element type (specified in .in file)
     integer, intent( in )         :: n_nodes                                                ! # nodes on the element
     integer, intent( in )         :: n_properties                                           ! # properties for the element
+    integer, intent( in )         :: length_coord_array                                     ! Total # coords
+    integer, intent( in )         :: length_dof_array                                       ! Total # DOF
     integer, intent( in )         :: n_state_variables                                      ! # state variables for the element
     integer, intent( in )         :: n_field_variables                                      ! # field variables
 
-    type (node), intent( in )     :: node_property_list(length_node_array)                  ! Data structure describing storage for nodal variables - see below
+    type (node), intent( in )     :: node_property_list(n_nodes)                            ! Data structure describing storage for nodal variables - see below
     !  type node
     !      sequence
     !      integer :: flag                          ! Integer identifier

@@ -1,10 +1,9 @@
 
-subroutine traction_boundarycondition_static(flag,ndims,ndof,nfacenodes,element_coords,&
-                             element_dof_increment,element_dof_total,traction,&
+subroutine traction_boundarycondition_static(flag,ndims,ndof,nfacenodes,element_coords,length_coord_array,&
+                             element_dof_increment,element_dof_total,length_dof_array,traction,ntract,&
                              element_stiffness,element_residual)               ! Output variables
    use Types
    use ParamIO
-   use User_Subroutine_Storage, only: length_coord_array
    use Element_Utilities, only : N1 => shape_functions_1D
    use Element_Utilities, only : dNdxi1 => shape_function_derivatives_1D
    use Element_Utilities, only : dNdx1 => shape_function_spatial_derivatives_1D
@@ -17,17 +16,20 @@ subroutine traction_boundarycondition_static(flag,ndims,ndof,nfacenodes,element_
    use Element_Utilities, only : calculate_shapefunctions
    implicit none
 
-   integer, intent( in )         :: flag                     ! Flag specifying traction type. 1=direct value; 2=history+direct; 3=normal+history                        
-   integer, intent( in )         :: ndims                    ! No. coords for nodes
-   integer, intent( in )         :: ndof                     ! No. DOFs for nodes
-   integer, intent( in )         :: nfacenodes               ! No. nodes on face
-   real( prec ), intent( in )    :: element_coords(:)        ! List of coords
-   real( prec ), intent( in )    :: element_dof_total(:)     ! List of DOFs (not currently used, provided for extension to finite deformations)
-   real( prec ), intent( in )    :: element_dof_increment(:) ! List of DOF increments (not used)
-   real( prec ), intent( in )    :: traction(:)              ! Traction value
+   integer, intent( in )         :: flag                                      ! Flag specifying traction type. 1=direct value; 2=history+direct; 3=normal+history
+   integer, intent( in )         :: ndims                                     ! No. coords for nodes
+   integer, intent( in )         :: ndof                                      ! No. DOFs for nodes
+   integer, intent( in )         :: nfacenodes                                ! No. nodes on face
+   integer, intent( in )         :: length_coord_array                        ! Total # coords
+   integer, intent( in )         :: length_dof_array                          ! Total # DOF
+   integer, intent( in )         :: ntract                                    ! # traction components
+   real( prec ), intent( in )    :: element_coords(length_coord_array)        ! List of coords
+   real( prec ), intent( in )    :: element_dof_total(length_dof_array)       ! List of DOFs (not currently used, provided for extension to finite deformations)
+   real( prec ), intent( in )    :: element_dof_increment(length_dof_array)   ! List of DOF increments (not used)
+   real( prec ), intent( in )    :: traction(ntract)                          ! Traction value
 
-   real( prec ), intent( out )   :: element_stiffness(:,:)   ! Element stiffness (ROW,COLUMN)
-   real( prec ), intent( out )   :: element_residual(:)      ! Element residual force (ROW)
+   real( prec ), intent( out )   :: element_stiffness(length_dof_array,length_dof_array)   ! Element stiffness (ROW,COLUMN)
+   real( prec ), intent( out )   :: element_residual(length_dof_array)      ! Element residual force (ROW)
   
   ! Local Variables
 
@@ -37,6 +39,8 @@ subroutine traction_boundarycondition_static(flag,ndims,ndof,nfacenodes,element_
 
    ! Routine to compute contribution to element residual from distributed force applied to a solid element face
    
+
+
    element_residual = 0.D0
    element_stiffness = 0.d0
 
@@ -95,12 +99,11 @@ subroutine traction_boundarycondition_static(flag,ndims,ndof,nfacenodes,element_
    return
 end subroutine traction_boundarycondition_static
 
-subroutine traction_boundarycondition_dynamic(flag,ndims,ndof,nfacenodes,element_coords,&
-                             element_dof_increment,element_dof_total,traction,&
+subroutine traction_boundarycondition_dynamic(flag,ndims,ndof,nfacenodes,element_coords,length_coord_array,&
+                             element_dof_increment,element_dof_total,length_dof_array,traction,ntract,&
                              element_residual)               ! Output variables
    use Types
    use ParamIO
-   use User_Subroutine_Storage, only: length_coord_array
    use Element_Utilities, only : N1 => shape_functions_1D
    use Element_Utilities, only : dNdxi1 => shape_function_derivatives_1D
    use Element_Utilities, only : dNdx1 => shape_function_spatial_derivatives_1D
@@ -117,12 +120,15 @@ subroutine traction_boundarycondition_dynamic(flag,ndims,ndof,nfacenodes,element
    integer, intent( in )         :: ndims                    ! No. coords for nodes
    integer, intent( in )         :: ndof                     ! No. DOFs for nodes
    integer, intent( in )         :: nfacenodes               ! No. nodes on face
-   real( prec ), intent( in )    :: element_coords(:)        ! List of coords
-   real( prec ), intent( in )    :: element_dof_total(:)     ! List of DOFs (not currently used, provided for extension to finite deformations)
-   real( prec ), intent( in )    :: element_dof_increment(:) ! List of DOF increments (not used)
-   real( prec ), intent( in )    :: traction(:)              ! Traction value
+   integer, intent( in )         :: length_coord_array       ! Total # coords
+   integer, intent( in )         :: length_dof_array         ! Total # DOF
+   integer, intent( in )         :: ntract                   ! # traction components
+   real( prec ), intent( in )    :: element_coords(length_coord_array)        ! List of coords
+   real( prec ), intent( in )    :: element_dof_total(length_dof_array)     ! List of DOFs (not currently used, provided for extension to finite deformations)
+   real( prec ), intent( in )    :: element_dof_increment(length_dof_array) ! List of DOF increments (not used)
+   real( prec ), intent( in )    :: traction(ntract)              ! Traction value
 
-   real( prec ), intent( out )   :: element_residual(:)      ! Element residual force (ROW)
+   real( prec ), intent( out )   :: element_residual(length_dof_array)      ! Element residual force (ROW)
   
   ! Local Variables
 
@@ -134,8 +140,9 @@ subroutine traction_boundarycondition_dynamic(flag,ndims,ndof,nfacenodes,element
    
    element_residual = 0.D0
 
+
    if (ndims==2) then                               ! 2D elements
-     x1 = reshape(element_coords,(/2,length_coord_array/2/)) 
+     x1 = reshape(element_coords,(/2,length_coord_array/2/))
      n_points = nfacenodes
      call initialize_integration_points(n_points, nfacenodes, xi1, w1)
 
@@ -156,14 +163,15 @@ subroutine traction_boundarycondition_dynamic(flag,ndims,ndof,nfacenodes,element
         endif
      end do
    else if (ndims==3) then                               ! 3D elements
-     x2 = reshape(element_coords,(/3,length_coord_array/3/)) 
+     x2 = reshape(element_coords,(/3,length_coord_array/3/))
      if (nfacenodes == 3) n_points = 3
      if (nfacenodes == 6) n_points = 4
      if (nfacenodes == 4) n_points = 4
      if (nfacenodes == 8) n_points = 9
+
      call initialize_integration_points(n_points, nfacenodes, xi2, w2)   
-     
      do kint = 1,n_points
+
        call calculate_shapefunctions(xi2(1:2,kint),nfacenodes,N2,dNdxi2)
        dxdxi2 = matmul(x2(1:3,1:nfacenodes),dNdxi2(1:nfacenodes,1:2))
        norm(1) = (dxdxi2(2,1)*dxdxi2(3,2))-(dxdxi2(2,2)*dxdxi2(3,1))

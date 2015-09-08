@@ -1,19 +1,21 @@
 subroutine user_constraint(constraint, constraint_flag, n_nodes, node_property_list, dof_list,&              ! Input variables
-     n_properties, constraint_properties,nodal_coords, dof_increment, dof_total,lagrange_multiplier,  &      ! Input variables
+     n_properties, constraint_properties,nodal_coords,length_coord_array, &
+     dof_increment, dof_total, length_dof_array, lagrange_multiplier,  &      ! Input variables
      constraint_stiffness,constraint_residual)      ! Output variables
   use Types
   use ParamIO
   use Mesh, only : node
-  use User_Subroutine_Storage
   implicit none
 
   integer, intent( in )         :: constraint                                             ! Constraint number
   integer, intent( in )         :: constraint_flag                                        ! Flag identifying constraint type
   integer, intent( in )         :: n_nodes                                                ! # nodes in the constraint  
   integer, intent( in )         :: n_properties                                           ! # properties for the element
-  integer, intent( in )         :: dof_list(n_nodes)                    
+  integer, intent( in )         :: length_coord_array                                     ! Total # coords for element
+  integer, intent( in )         :: length_dof_array                                       ! Total # Dof for the element
+  integer, intent( in )         :: dof_list(n_nodes)                                      ! List of DOFs being constrained
 
-  type (node), intent( in )     :: node_property_list(length_node_array)                  ! Data structure describing storage for nodal variables - see below            
+  type (node), intent( in )     :: node_property_list(n_nodes)                  ! Data structure describing storage for nodal variables - see below
 !  type node
 !      sequence
 !      integer :: flag                          ! Integer identifier

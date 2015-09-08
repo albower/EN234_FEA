@@ -13,8 +13,4 @@ module Bandwidth
     integer, save, allocatable :: node_adjacency_index(:)  !  Points to first data block of adjacency for each node
     type (Integer_Linked_List), save, allocatable :: node_adjacency(:)  ! Linked data block list of adjacency
    
-   
-   
-   
-   
 end module

@@ -1,16 +1,16 @@
 subroutine user_distributed_load_static(lmn, element_identifier,face,dload_parameters,n_parameters,  &  ! Input variables
-     n_nodes, node_property_list, &                                                              ! Input variables
-     n_properties, element_properties,element_coords, dof_increment, dof_total,  &               ! Input variables
+     n_nodes, node_property_list, &                                                                     ! Input variables
+     n_properties, element_properties,element_coords, length_coord_array, &                             ! Input variables
+     dof_increment, dof_total, length_dof_array,  &                                                     ! Input variables
      element_stiffness,element_residual)                           ! Output variables
   use Types
   use ParamIO
   use Mesh, only : node
-  use User_Subroutine_Storage
-  use Element_Utilities, only : N => shape_functions_3D
-  use Element_Utilities, only : dNdxi => shape_function_derivatives_3D
-  use Element_Utilities, only : dNdx => shape_function_spatial_derivatives_3D
-  use Element_Utilities, only : xi => integrationpoints_3D, w => integrationweights_3D
-  use Element_Utilities, only : dxdxi => jacobian_3D
+  use Element_Utilities, only : N => shape_functions_2D
+  use Element_Utilities, only : dNdxi => shape_function_derivatives_2D
+  use Element_Utilities, only : dNdx => shape_function_spatial_derivatives_2D
+  use Element_Utilities, only : xi => integrationpoints_2D, w => integrationweights_2D
+  use Element_Utilities, only : dxdxi => jacobian_2D
   use Element_Utilities, only : initialize_integration_points
   use Element_Utilities, only : calculate_shapefunctions
   use Element_Utilities, only : invert_small
@@ -22,10 +22,12 @@ subroutine user_distributed_load_static(lmn, element_identifier,face,dload_param
   integer, intent( in )         :: n_parameters                                           ! User supplied parameters
   integer, intent( in )         :: n_nodes                                                ! # nodes on the element  
   integer, intent( in )         :: n_properties                                           ! # properties for the element                
+  integer, intent( in )         :: length_coord_array                                     ! Total # coords
+  integer, intent( in )         :: length_dof_array                                       ! Total # DOF
 
   real (prec), intent( in )     :: dload_parameters(n_parameters)                         ! User supplied parameters.
 
-  type (node), intent( in )     :: node_property_list(length_node_array)                  ! Data structure describing storage for nodal variables - see below            
+  type (node), intent( in )     :: node_property_list(n_nodes)                            ! Data structure describing storage for nodal variables - see below
 !  type node
 !      sequence
 !      integer :: flag                          ! Integer identifier
@@ -51,18 +53,18 @@ subroutine user_distributed_load_static(lmn, element_identifier,face,dload_param
   end subroutine user_distributed_load_static
   
   subroutine user_distributed_load_dynamic(lmn, element_identifier,face,dload_parameters,n_parameters,  &  ! Input variables
-     n_nodes, node_property_list, &                                                              ! Input variables
-     n_properties, element_properties,element_coords, dof_increment, dof_total,  &               ! Input variables
-     element_residual)                           ! Output variables
+     n_nodes, node_property_list, &                                                                        ! Input variables
+     n_properties, element_properties,element_coords,length_coord_array, &                                 ! Input variables
+     dof_increment, dof_total, length_dof_array, &                                                         ! Input variables
+     element_residual)                                                                                     ! Output variables
   use Types
   use ParamIO
   use Mesh, only : node
-  use User_Subroutine_Storage
-  use Element_Utilities, only : N => shape_functions_3D
-  use Element_Utilities, only : dNdxi => shape_function_derivatives_3D
-  use Element_Utilities, only: dNdx => shape_function_spatial_derivatives_3D
-  use Element_Utilities, only : xi => integrationpoints_3D, w => integrationweights_3D
-  use Element_Utilities, only : dxdxi => jacobian_3D
+  use Element_Utilities, only : N => shape_functions_2D
+  use Element_Utilities, only : dNdxi => shape_function_derivatives_2D
+  use Element_Utilities, only : dNdx => shape_function_spatial_derivatives_2D
+  use Element_Utilities, only : xi => integrationpoints_3D, w => integrationweights_2D
+  use Element_Utilities, only : dxdxi => jacobian_2D
   use Element_Utilities, only : initialize_integration_points
   use Element_Utilities, only : calculate_shapefunctions
   use Element_Utilities, only : invert_small
@@ -74,10 +76,12 @@ subroutine user_distributed_load_static(lmn, element_identifier,face,dload_param
   integer, intent( in )         :: n_parameters                                           ! User supplied parameters
   integer, intent( in )         :: n_nodes                                                ! # nodes on the element  
   integer, intent( in )         :: n_properties                                           ! # properties for the element                
+  integer, intent( in )         :: length_coord_array                                     ! Total # coords
+  integer, intent( in )         :: length_dof_array                                       ! Total # DOF
 
   real (prec), intent( in )     :: dload_parameters(n_parameters)                         ! User supplied parameters.
 
-  type (node), intent( in )     :: node_property_list(length_node_array)                  ! Data structure describing storage for nodal variables - see below            
+  type (node), intent( in )     :: node_property_list(n_nodes)                            ! Data structure describing storage for nodal variables - see below
 !  type node
 !      sequence
 !      integer :: flag                          ! Integer identifier

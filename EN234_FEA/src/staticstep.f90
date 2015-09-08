@@ -3,6 +3,8 @@ subroutine compute_static_step
     use ParamIO
     use Globals, only : TIME, DTIME
     use Mesh, only : dof_increment, dof_total, initial_state_variables, updated_state_variables
+    use Mesh, only : n_elements, n_nodes
+    use Boundaryconditions, only : n_constraints
     use Staticstepparameters
     use Stiffness       
 
@@ -13,6 +15,7 @@ subroutine compute_static_step
     logical :: converged
     logical :: activatestateprint
     logical :: activateuserprint
+    integer :: status
     
     integer :: iteration
     
@@ -25,12 +28,18 @@ subroutine compute_static_step
     current_step_number = 1
     if (solvertype==1) then                        ! Direct solver
 
-        call generate_node_numbers
+        if (allocated(node_numbers)) deallocate(node_numbers)
+        if (allocated(node_order_index)) deallocate(node_order_index)
+        allocate(node_numbers(n_nodes+n_constraints), stat = status)
+        allocate(node_order_index(n_nodes+n_constraints), stat = status)
+
+        call generate_node_numbers(1,n_elements,.true.,node_numbers,node_order_index)
         call compute_profile
         call allocate_direct_stiffness
 
         do while (continue_timesteps)
             call assemble_direct_stiffness(fail)
+
             if (fail) then                          ! Force a timestep cutback if stiffness computation fails
                 converged=.false.
                 iteration = 0
@@ -40,6 +49,7 @@ subroutine compute_static_step
                 dof_increment = 0.d0
                 cycle
             endif
+
             call apply_direct_boundaryconditions
             call solve_direct
             converged = .true.
@@ -48,6 +58,7 @@ subroutine compute_static_step
                 do iteration = 1,max_newton_iterations
                     call assemble_direct_stiffness(fail)
                     if (fail) exit                         ! Force a cutback if stiffness computation fails
+
                     call apply_direct_boundaryconditions
                     call convergencecheck(iteration,converged)
                     if (converged) exit
@@ -64,7 +75,7 @@ subroutine compute_static_step
                 cycle
             endif
          
-            if (activatestateprint) call print_state
+            if (activatestateprint)  call print_state
             if (activateuserprint) call user_print(current_step_number)
 
             !        Update solution and continue

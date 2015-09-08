@@ -13,6 +13,7 @@
    logical, save :: print_dof
    logical, save :: print_displacedmesh
    logical, save :: combinezones
+   logical, save :: use_lumped_projection_matrix
   
    real (prec), save :: displacementscalefactor
  
@@ -23,13 +24,13 @@
    integer, save :: initial_mesh_print_unit
 
    
-   logical, save, allocatable :: zone_print_flag(:)
-   integer, save, allocatable :: user_print_units(:)
-   integer, save, allocatable :: zone_dimension(:)
-   integer, save, allocatable :: zone_ndof(:)
-   character (len=100), save, allocatable :: user_print_filenames(:)
-   character (len=100), save, allocatable :: field_variable_names(:)  
-   real (prec), save, allocatable :: user_print_parameters(:)
+   logical, save, allocatable :: zone_print_flag(:)                       ! Set to .true. to print a zone
+   integer, save, allocatable :: user_print_units(:)                      ! Unit numbers for user print files
+   integer, save, allocatable :: zone_dimension(:)                        ! Specifies whether a zone is 2D or 3D
+   integer, save, allocatable :: zone_ndof(:)                             ! N DOF for nodes in a zone
+   character (len=100), save, allocatable :: user_print_filenames(:)      ! Names of user print files
+   character (len=100), save, allocatable :: field_variable_names(:)      ! Names of field variables in a STATE PRINT
+   real (prec), save, allocatable :: user_print_parameters(:)             ! List of user print parameters
 
  
  

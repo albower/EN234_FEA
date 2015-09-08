@@ -2,8 +2,7 @@
 %             Demonstration input file for simple general purpose FEA code EN234FEA
 %                                    A.F. Bower, August 2015
 %
-%             This example illustrates a simple 3D elastostatic boundary value problem with 8 noded brick elements
-%             The element subroutines are in el_linelast_3Dbasic.f90.
+%             This example illustrates a simple 3D elastodynamic boundary value problem with 8 noded brick elements
 %
 %
 % %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% MESH DEFINITION %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -32,9 +31,6 @@
         11,   2.d0, 0.d0, 1.d0
         12,   2.d0, 1.d0, 1.d0
         END COORDINATES
-%        PARAMETERS, 0, 1, 2         % Reference node for constraint
-%        DISPLACEMENT DOF, NONE
-%        CREATE NODES, 1             % Node number 13 has no coordinates so we use the CREATE NODES option.  The number is the # nodes to be created.
       END NODES
 %
 %     The ELEMENT command defines properties of elements
@@ -45,10 +41,10 @@
 %       Define element properties - the values are passed to user subroutine elstif in the order they are listed here
 %       For the example provided, the params are Youngs Modulus, Poissons ratio
         PROPERTIES
-         100.d0, 0.3d0
+         1000.d0, 0.3d0
         END PROPERTIES
 %     Define mass density (for explicity dynamics only)
-%       DENSITY, 10.d0
+       DENSITY, 10.d0
 %     Define element connectivity
 %     The element number (first number in the list) is optional, and is ignored in the code
         CONNECTIVITY, zone1
@@ -69,7 +65,7 @@
 %       The HISTORY key defines a time history that can be applied to DOFs or distributed loads
         HISTORY, dof_history
           0.d0, 0.d0                  % Each line gives a time value and then a function value
-         10.d0, 1.d0
+         10.d0, 0.1d0
         END HISTORY
 
         HISTORY, dload_history
@@ -78,7 +74,9 @@
         END HISTORY
 
 %       The NODESET key defines a list of nodes
-
+        NODESET, node1
+           1
+        END NODESET
         NODESET, left
            1, 4, 5, 8
         END NODESET
@@ -93,16 +91,17 @@
        ELEMENTSET, end_element
            2
        END ELEMENTSET
-
+%
+%      For a dynamic problem we dont need to worry about constraining rigid body modes
+%      All displacement BCs commented out
 %       The DEGREE OF FREEDOM key assigns values to nodal DOFs
-%       The syntax is node set name, DOF number, VALUE/HISTORY/SUBROUTINE, value/history name/subroutine parameter list name.
+%       The syntax is node set name, DOF number, and either a value or a history name.
 %     
-        DEGREES OF FREEDOM
-           1, 3, VALUE, 0.d0
-           side, 2, VALUE, 0.d0
-           left, 1, VALUE, 0.d0
-           right, 1, HISTORY, dof_history
-        END DEGREES OF FREEDOM
+%        DEGREES OF FREEDOM
+%           side, 2, VALUE, 0.d0
+%           left, 1, VALUE, 0.d0
+%           right, 1, HISTORY, dof_history
+%        END DEGREES OF FREEDOM
 
 
 %      The DISTRIBUTED LOAD key sets up prescribed (nominal) tractions on element faces
@@ -111,73 +110,33 @@
 %           element set, face #, HISTORY,history name, nx,(ny),(nz) (time dependent traction or flux to element face in direction (nx,ny,nz))
 %           element set, face #, NORMAL, history name     (applies time dependent pressure normal to element face)
 %           element set, face #, SUBROUTINE, subroutine parameter name
-
- %       DISTRIBUTED LOADS
- %         end_element, 4, Value, 10.d0,0.d0,0.d0
- %       END DISTRIBUTED LOADS
-
-%       The CONSTRAINTS key gives a way to enforce constraints between pairs or groups of nodes.
-%       Useful, e.g. for periodic boundary conditions.
 %
-%      CONSTRAINT PARAMETERS, constraint_params
-%          1.d-08
-%     END CONSTRAINT PARAMETERS
-%
-%       The syntax is
-%       CONSTRAINTS
-%          CONSTRAIN NODE PAIRS, # of nodes pairs, node number or nodeset1, DOF1, node number or nodeset2, DOF2
-%          TIE NODES, # of nodes in nodeset to be tied, nodeset1, DOF1, reference node number, DOF2
-%          CONSTRAIN NODE SET, # of nodes in constraint, nodeset, dof list (use a node set to define the list), parameter list
-%           CONSTRAIN NODE PAIRS, 5, tie_test_1, 1, tie_test_2,1, constraint_params
-%           CONSTRAIN NODE SET, 5, tie_test_1, tie_test_2, constraint_params
-%           TIE NODES, 4, right, 1, 13, 1
-%        END CONSTRAINTS
+%       We apply a constant traction to the end element - produces a roughly constant acceleration of the two elements plus some vibration....
+        DISTRIBUTED LOADS
+          end_element, 4, Value, 3.d0,0.d0,0.d0
+        END DISTRIBUTED LOADS
+
 
 
    END BOUNDARY CONDITIONS
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% Mesh printing, error checking %%%%%%%%%%%%%%%%%%%%
-
-%  Print the initial mesh to a file named initial_mesh.dat
-
-   PRINT INITIAL MESH, initial_mesh.dat
-
-%   TIME, VALUE, 0.d0        % Use this to specify the initial time
-%   TIME, INCREMENT, 0.01d0  % Use this to specify a time increment (often needed for check stiffness)
-
-%   The CHECK STIFFNESS key tests the element subroutine to ensure that
-%   the residual force vector is consistent with the stiffness
-       CHECK STIFFNESS, 1001
 
 
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% Analysis %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-   %   The STATIC STEP key initializes a static load step
+%   The EXPLICIT DYNAMIC STEP key initializes a dynamic load step
 
-     STATIC STEP
+     EXPLICIT DYNAMIC STEP
 
+%        The TIME STEP key defines values of parameters controlling time stepping.
+%        The parameters are time step, no. steps, no. steps between state prints, no. steps between user prints
+%        All parameters are required
 
-          INITIAL TIME STEP, 1.d0        % Test of a comment here
-          MAX TIME STEP, 1.d0
-          MIN TIME STEP, 0.001d0
-          MAX NUMBER OF STEPS, 3
-          STOP TIME, 10.d0
-          STATE PRINT STEP INTERVAL, 1
-          USER PRINT STEP INTERVAL, 1
-
-
-%        The SOLVER key controls the equation solver and Newton-Raphson iterations
-%        The options are FACTOR for direct solver, CONJUGATE GRADIENT for cg solver
-%        Factor will work on anything but might be slow for large equation systems.   
-%        Conjugate gradient works well for elasticity problems but (with the diagonal preconditioner used here) is not so good for unsymmetric matrices
-%                        LINEAR for linear equations, NONLINEAR for nonlinear equations
-%                        For nonlinear solver, must specify convergence tolerance and max # iterations
-%                        UNSYMMETRIC  (optional - only for unsymmetric stiffness)
-%        It is silly to use the nonlinear option for linear elasticity, but is included here for demonstration purposes.
-
-         SOLVER, DIRECT, NONLINEAR, 1.d-05,15
+          TIME STEP, 0.01
+          NUMBER OF STEPS, 200
+          STATE PRINT STEPS, 20
+          USER PRINT STEPS, 210
 
 
 %      This prints the DOF values and projected nodal state for all solid elements to a tecplot readable file
@@ -193,19 +152,9 @@
             DISPLACEMENT SCALE FACTOR, 1.d0
          END PRINT STATE
 
-%        The lines below are just examples - no code exists to use them.
-%          USER PRINT FILES
-%          List file names to contain the output. Fortran unit numbers are provided to each file in the user subroutine
-%            filename1.dat
-%            filename2.dat
-%          END USER PRINT FILES
-%          USER PRINT PARAMETERS
-%            list of parameters to be passed to the subroutine
-%             1.d0, 6.d0
-%             4
-%          END USER print PARAMETERS
 
-        END STATIC STEP
+
+        END EXPLICIT DYNAMIC STEP
          
 
    STOP

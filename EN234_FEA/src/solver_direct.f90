@@ -46,6 +46,8 @@ subroutine assemble_direct_stiffness(fail)
         stop
     endif
 
+    element_stiffness = 0.d0
+    element_residual = 0.d0
 
     aupp = 0.d0
     if (unsymmetric_stiffness) alow = 0.d0
@@ -79,11 +81,12 @@ subroutine assemble_direct_stiffness(fail)
         ns = element_list(lmn)%n_states
         if (ns==0) ns=1
 
-        call user_element_static(lmn, element_list(lmn)%flag, element_list(lmn)%n_nodes, local_nodes, &       ! Input variables
+        call user_element_static(lmn, element_list(lmn)%flag, element_list(lmn)%n_nodes, &
+            local_nodes(1:element_list(lmn)%n_nodes), &       ! Input variables
             element_list(lmn)%n_element_properties, element_properties(element_list(lmn)%element_property_index),  &     ! Input variables
-            element_coords, element_dof_increment, element_dof_total,      &                              ! Input variables
+            element_coords(1:ix),ix,element_dof_increment(1:iu), element_dof_total(1:iu),iu,      &                              ! Input variables
             ns, initial_state_variables(iof:iof+ns-1), &                                                  ! Input variables
-            updated_state_variables(iof:iof+ns),element_stiffness,element_residual, fail)                 ! Output variables
+            updated_state_variables(iof:iof+ns),element_stiffness(1:iu,1:iu),element_residual(1:iu), fail)                 ! Output variables
       
 
         if (fail) return
@@ -179,9 +182,9 @@ subroutine assemble_direct_stiffness(fail)
             lmult = lagrange_multipliers(nc)
             call user_constraint(nc, constraint_list(nc)%flag, nodeset_list(nset)%n_nodes, &
                 local_nodes, node_lists(idof:idof+nnodes-1),&    ! Input variables
-                npar, constraint_parameters(ipar:ipar+npar-1),element_coords, &                                   ! Input variables
-                element_dof_increment, element_dof_total,lmult,  &                           ! Input variables
-                element_stiffness,element_residual)      ! Output variables
+                npar, constraint_parameters(ipar:ipar+npar-1),element_coords(1:ix), ix,&     ! Input variables
+                element_dof_increment(1:iu), element_dof_total(1:iu), iu,lmult,  &                           ! Input variables
+                element_stiffness(1:iu,1:iu),element_residual(1:iu))      ! Output variables
 
             nsr = 0
             do i1 = 1, nnodes
@@ -273,39 +276,39 @@ subroutine apply_direct_boundaryconditions
     use Element_Utilities, only : facenodes
     implicit none
 
-    interface
-        subroutine traction_boundarycondition_static(flag,ndims,ndof,nfacenodes,element_coords,&
-            element_dof_increment,element_dof_total,traction,&
-            element_stiffness,element_residual)               ! Output variables
-            use Types
-            use ParamIO
-            use Element_Utilities, only : N1 => shape_functions_1D
-            use Element_Utilities, only : dNdxi1 => shape_function_derivatives_1D
-            use Element_Utilities, only : dNdx1 => shape_function_spatial_derivatives_1D
-            use Element_Utilities, only : xi1 => integrationpoints_1D, w1 => integrationweights_1D
-            use Element_Utilities, only : N2 => shape_functions_2D
-            use Element_Utilities, only : dNdxi2 => shape_function_derivatives_2D
-            use Element_Utilities, only : dNdx2 => shape_function_spatial_derivatives_2D
-            use Element_Utilities, only : xi2 => integrationpoints_2D, w2 => integrationweights_2D
-            use Element_Utilities, only : initialize_integration_points
-            use Element_Utilities, only : calculate_shapefunctions
-
-            implicit none
-
-            integer, intent( in )      :: flag                     ! Flag specifying traction type. 1=direct value; 2=history+direct; 3=normal+history
-            integer, intent( in )      :: ndims                    ! No. coords for nodes
-            integer, intent( in )      :: ndof                     ! No. DOFs for nodes
-            integer, intent( in )      :: nfacenodes               ! No. nodes on face
-            real( prec ), intent( in ) :: element_coords(:)        ! List of coords
-            real( prec ), intent( in ) :: element_dof_total(:)     ! List of DOFs (not currently used, provided for extension to finite deformations)
-            real( prec ), intent( in ) :: element_dof_increment(:) ! List of DOF increments (not used)
-            real( prec ), intent( in ) :: traction(:)              ! Traction value
-
-            real( prec ), intent( out )   :: element_stiffness(:,:)   ! Element stiffness (ROW,COLUMN)
-            real( prec ), intent( out )   :: element_residual(:)      ! Element residual force (ROW)
-  
-        end subroutine traction_boundarycondition_static
-    end interface
+!    interface
+!        subroutine traction_boundarycondition_static(flag,ndims,ndof,nfacenodes,element_coords,&
+!            element_dof_increment,element_dof_total,traction,&
+!            element_stiffness,element_residual)               ! Output variables
+!            use Types
+!            use ParamIO
+!            use Element_Utilities, only : N1 => shape_functions_1D
+!            use Element_Utilities, only : dNdxi1 => shape_function_derivatives_1D
+!            use Element_Utilities, only : dNdx1 => shape_function_spatial_derivatives_1D
+!            use Element_Utilities, only : xi1 => integrationpoints_1D, w1 => integrationweights_1D
+!            use Element_Utilities, only : N2 => shape_functions_2D
+!            use Element_Utilities, only : dNdxi2 => shape_function_derivatives_2D
+!            use Element_Utilities, only : dNdx2 => shape_function_spatial_derivatives_2D
+!            use Element_Utilities, only : xi2 => integrationpoints_2D, w2 => integrationweights_2D
+!            use Element_Utilities, only : initialize_integration_points
+!            use Element_Utilities, only : calculate_shapefunctions
+!
+!            implicit none
+!
+!            integer, intent( in )      :: flag                     ! Flag specifying traction type. 1=direct value; 2=history+direct; 3=normal+history
+!            integer, intent( in )      :: ndims                    ! No. coords for nodes
+!            integer, intent( in )      :: ndof                     ! No. DOFs for nodes
+!            integer, intent( in )      :: nfacenodes               ! No. nodes on face
+!            real( prec ), intent( in ) :: element_coords(:)        ! List of coords
+!            real( prec ), intent( in ) :: element_dof_total(:)     ! List of DOFs (not currently used, provided for extension to finite deformations)
+!            real( prec ), intent( in ) :: element_dof_increment(:) ! List of DOF increments (not used)
+!            real( prec ), intent( in ) :: traction(:)              ! Traction value
+!
+!            real( prec ), intent( out )   :: element_stiffness(:,:)   ! Element stiffness (ROW,COLUMN)
+!            real( prec ), intent( out )   :: element_residual(:)      ! Element residual force (ROW)
+!
+!        end subroutine traction_boundarycondition_static
+!    end interface
 
 
 
@@ -398,10 +401,9 @@ subroutine apply_direct_boundaryconditions
                         element_dof_total(iu) = dof_total(node_list(n)%dof_index + i - 1)
                     end do
                 end do
-  
-                call traction_boundarycondition_static(flag,ndims,ndof,nfacenodes,element_coords(1:ix),&
-                    element_dof_increment(1:iu),element_dof_total(1:iu),traction(1:ntract),&
-                    element_stiffness,element_residual)               ! Output variables
+                call traction_boundarycondition_static(flag,ndims,ndof,nfacenodes,element_coords(1:ix),ix,& ! Input variables
+                    element_dof_increment(1:iu),element_dof_total(1:iu),iu,traction(1:ntract),ntract, & ! Input variables
+                    element_stiffness(1:iu,1:iu),element_residual(1:iu))                                ! Output variables
 
                 nsr = 0
                 do i1 = 1,nfacenodes
@@ -459,10 +461,10 @@ subroutine apply_direct_boundaryconditions
         
                 call user_distributed_load_static(lmn, element_list(lmn)%flag, ifac, &      ! Input variables
                     subroutine_parameters(param_index:param_index+nparam-1),nparam, &       ! Input variables
-                    element_list(lmn)%n_nodes, local_nodes, &       ! Input variables
+                    element_list(lmn)%n_nodes, local_nodes(1:element_list(lmn)%n_nodes), &                               ! Input variables
                     element_list(lmn)%n_element_properties, element_properties(element_list(lmn)%element_property_index),  &     ! Input variables
-                    element_coords, element_dof_increment, element_dof_total,      &                              ! Input variables
-                    element_stiffness,element_residual)               ! Output variables
+                    element_coords(1:ix),ix, element_dof_increment(1:iu), element_dof_total(1:iu), iu,     &        ! Input variables
+                    element_stiffness(1:iu,1:iu),element_residual(1:iu))               ! Output variables
 
                 !     --   Add element stiffness and residual to global array
 
@@ -739,7 +741,6 @@ subroutine backsubstitution(alow, aupp, diag, rhs, jpoin, neq)
         endif
     end do
     if (foundzerorhs) then
-        write (IOW, 99001)
         rhs = 0.D0
         return
     endif
@@ -762,8 +763,6 @@ subroutine backsubstitution(alow, aupp, diag, rhs, jpoin, neq)
         end do
     end if
 
-99001 format ( // ' ***** SOLVER WARNING ***** '/, &
-        ' Zero RHS found in SOLV ')
 
 end subroutine backsubstitution
 
@@ -887,7 +886,7 @@ subroutine LU_decomposition(unsymmetric_stiffness, alow, aupp, diag, jpoin, neq)
         '  Reduced diagonal is zero for equation ', i5)
 99004 format (/' **** DIRECT SOLVER WARNING 3 **** '/  &
         '  Rank failure for zero unreduced diagonal in ', 'equation', i5)
-99005 format ( // ' Direct Solver has completed stiffness decomposition '/  &
+99005 format ( // ' Direct Solver has completed LU decomposition '/  &
         '    Conditioning information: '/  &
         '      Max diagonal in reduced matrix:   ',  &
         e11.4/'      Min diagonal in reduced matrix:   ',  &

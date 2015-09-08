@@ -69,16 +69,101 @@
 !     element_list(lmn)%n_states = # state vars for the element (may be zero)
 !     element_list(lmn)%element_property_index = index of first property for the element in the array element_properties
 !     element_list(lmn)%n_element_properties = # properties for the element
-!
-!  You must initialize the following variables:
-!     coords
-!     connectivity
-!     element_properties
-!     dof_total
-!     dof_increment
-!     initial_state_variables
      
       
+   n_nodes_per_element = int(parameterlist(1))
+   n_elements = int(parameterlist(2))
+   n_dof_per_node = int(parameterlist(3))
+   butler_volmer_flag = int(parameterlist(4))
+   H = parameterlist(5)                                    ! Film thickness
+   n_nodes = n_elements*(n_nodes_per_element-1) + 1 + butler_volmer_flag
+   
+   n_zones = 1+butler_volmer_flag
+   length_dofs = n_dof_per_node*n_nodes - butler_volmer_flag
+   length_connectivity = n_nodes_per_element*n_elements+2*butler_volmer_flag
+   length_element_properties = n_parameters-5
+   
+   allocate(connectivity(length_connectivity), stat=status)
+   allocate(element_properties(length_element_properties), stat=status)
+   allocate(coords(n_nodes-butler_volmer_flag), stat=status)
+   allocate(dof_total(length_dofs), stat=status)
+   allocate(dof_increment(length_dofs), stat=status)
+   allocate(rforce(length_dofs), stat=status)
+   allocate(node_list(n_nodes), stat=status)
+   allocate(element_list(n_elements+butler_volmer_flag), stat=status)
+   allocate(zone_list(n_zones), stat=status)
+   allocate(initial_state_variables(1), stat = status)
+   allocate(updated_state_variables(1), stat = status)
+   dof_total = 0.d0
+   dof_increment = 0.d0
+     
+   zone_list(1)%start_element = 1
+   zone_list(1)%end_element = n_elements
 
+   if (butler_volmer_flag==1) then
+      zone_list(2)%start_element = n_elements+1
+      zone_list(2)%end_element = n_elements+1
+  ! If we are enforcing the Butler-Volmer boundary condition the first node is the voltage node
+      node_list(1)%flag = 0
+      node_list(1)%coord_index = 0
+      node_list(1)%n_coords=0
+      node_list(1)%dof_index = 1
+      node_list(1)%n_dof = 1
+      node_list(1)%displacement_map_index = 0
+      node_list(1)%n_displacements = 0
+   endif
+   
+   
+   ! Bulk nodes
+   do n = 1+butler_volmer_flag,n_nodes
+     node_list(n)%flag = 1
+     node_list(n)%coord_index = n-butler_volmer_flag
+     node_list(n)%n_coords=1
+     node_list(n)%dof_index = (n-1)*n_dof_per_node+1-butler_volmer_flag
+     node_list(n)%n_dof = n_dof_per_node
+     node_list(n)%displacement_map_index = 0
+     node_list(n)%n_displacements = 0
+     coords(n-1) = (n-1-butler_volmer_flag)*H/(n_nodes-1)
+   end do
+!   do n = 1,n_nodes/2
+!     dof_total(2*n) = parameterlist(8)      ! High concentration phase
+!   end do
+   do n = 1+butler_volmer_flag,n_nodes
+     dof_total(2*n-butler_volmer_flag) = parameterlist(8)/6      ! Low concentration phase
+   end do
+!  These are the bulk elements   
+   do lmn = 1,n_elements
+     element_list(lmn)%flag = 500
+     element_list(lmn)%connect_index = (lmn-1)*n_nodes_per_element+1
+     element_list(lmn)%n_nodes = n_nodes_per_element
+     element_list(lmn)%state_index = 1
+     element_list(lmn)%n_states = 0
+     element_list(lmn)%element_property_index = 1
+     element_list(lmn)%n_element_properties = 7
+     iof = (lmn-1)*n_nodes_per_element+1
+     connectivity(iof) = (lmn-1)*(n_nodes_per_element-1) + 1 + butler_volmer_flag
+     connectivity(iof+1) = lmn*(n_nodes_per_element-1) + 1 + butler_volmer_flag
+     if (n_nodes_per_element==3) then
+       connectivity(iof+2) = lmn*(n_nodes_per_element-1)
+     endif
+   end do
+!  The last element is the butler-volmer element   
+   if (butler_volmer_flag==1) then
+     n_elements = n_elements + 1
+     lmn = n_elements
+     element_list(lmn)%flag = 400
+     element_list(lmn)%connect_index = (lmn-1)*n_nodes_per_element+1
+     element_list(lmn)%n_nodes = 2
+     element_list(lmn)%state_index = 1
+     element_list(lmn)%n_states = 0
+     element_list(lmn)%element_property_index = 8
+     element_list(lmn)%n_element_properties = 5
+     iof = (lmn-1)*n_nodes_per_element+1
+     connectivity(iof) = 1                       ! The first node is the voltage node
+     connectivity(iof+1) = 2                     ! Second node is the bulk node
+   endif
+   element_properties(1:length_element_properties) = parameterlist(6:n_parameters)
+   
+   
    
    end subroutine user_mesh

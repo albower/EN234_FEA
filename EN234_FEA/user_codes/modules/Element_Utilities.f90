@@ -230,7 +230,7 @@ contains
 
      end function principalvals33
 
-     function rotatesymvec(symvec,R)     ! Apply
+     function rotatesymvec(symvec,R)     ! Apply a rigid rotation to a symmetric 3x3 stress or strain vector
 
          use Types
          implicit none

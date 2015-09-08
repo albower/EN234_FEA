@@ -15,7 +15,6 @@ subroutine assemble_conjugate_gradient_stiffness(fail)
 
     real( prec ) :: diagnorm                         ! measure of average of diagonal in stiffness
    
-
     integer      :: irow,icol,index
     integer      :: status
     integer      :: lmn
@@ -91,11 +90,12 @@ subroutine assemble_conjugate_gradient_stiffness(fail)
         ns = element_list(lmn)%n_states
         if (ns==0) ns=1
 
-        call user_element_static(lmn, element_list(lmn)%flag, element_list(lmn)%n_nodes, local_nodes, &       ! Input variables
+        call user_element_static(lmn, element_list(lmn)%flag, element_list(lmn)%n_nodes, &                               ! Input variables
+             local_nodes(1:element_list(lmn)%n_nodes), &                                                                 ! Input variables
             element_list(lmn)%n_element_properties, element_properties(element_list(lmn)%element_property_index),  &     ! Input variables
-            element_coords, element_dof_increment, element_dof_total,      &                              ! Input variables
-            ns, initial_state_variables(iof:iof+ns-1), &                           ! Input variables
-            updated_state_variables(iof:iof+ns),element_stiffness,element_residual, fail)               ! Output variables
+            element_coords(1:ix),ix, element_dof_increment(1:iu), element_dof_total(1:iu),iu,      &                     ! Input variables
+            ns, initial_state_variables(iof:iof+ns-1), &                                                                 ! Input variables
+            updated_state_variables(iof:iof+ns),element_stiffness(1:iu,1:iu),element_residual(1:iu), fail)      ! Output variables
       
 
         if (fail) return
@@ -191,11 +191,14 @@ subroutine assemble_conjugate_gradient_stiffness(fail)
             npar = constraintparameter_list(constraint_list(nc)%index_parameters)%n_parameters
             idof = constraint_list(nc)%node2                                 ! Index of node set containing DOF list
             lmult = lagrange_multipliers(nc)
-            call user_constraint(nc, constraint_list(nc)%flag, nodeset_list(nset)%n_nodes,&
-                local_nodes, node_lists(idof:idof+nnodes-1),&    ! Input variables
-                npar, constraint_parameters(ipar:ipar+npar-1),element_coords, &                                   ! Input variables
-                element_dof_increment, element_dof_total,lmult,  &                           ! Input variables
-                element_stiffness,element_residual)      ! Output variables
+!
+            call user_constraint(nc, constraint_list(nc)%flag, nodeset_list(nset)%n_nodes,&    ! Input variables
+                local_nodes(1:nodeset_list(nset)%n_nodes), node_lists(idof:idof+nnodes-1),&    ! Input variables
+                npar, constraint_parameters(ipar:ipar+npar-1), &                               ! Input variables
+                element_coords(1:ix),ix, &                                                           ! Input variables
+                element_dof_increment(1:iu), element_dof_total(1:iu),iu, &                                 ! Input variables
+                lmult,  &                                                                      ! Input variables
+                element_stiffness(1:iu,1:iu),element_residual(1:iu))      ! Output variables
 
             nsr = 0
             do i1 = 1, nnodes
@@ -290,42 +293,6 @@ subroutine apply_cojugategradient_boundaryconditions
     use Linkedlist_handling
     implicit none
 
-    interface
-        subroutine traction_boundarycondition_static(flag,ndims,ndof,nfacenodes,element_coords,&
-            element_dof_increment,element_dof_total,traction,&
-            element_stiffness,element_residual)               ! Output variables
-            use Types
-            use ParamIO
-            use Element_Utilities, only : N1 => shape_functions_1D
-            use Element_Utilities, only : dNdxi1 => shape_function_derivatives_1D
-            use Element_Utilities, only : dNdx1 => shape_function_spatial_derivatives_1D
-            use Element_Utilities, only : xi1 => integrationpoints_1D, w1 => integrationweights_1D
-            use Element_Utilities, only : N2 => shape_functions_2D
-            use Element_Utilities, only : dNdxi2 => shape_function_derivatives_2D
-            use Element_Utilities, only : dNdx2 => shape_function_spatial_derivatives_2D
-            use Element_Utilities, only : xi2 => integrationpoints_2D, w2 => integrationweights_2D
-            use Element_Utilities, only : initialize_integration_points
-            use Element_Utilities, only : calculate_shapefunctions
-
-            implicit none
-
-            integer, intent( in )      :: flag                     ! Flag specifying traction type. 1=direct value; 2=history+direct; 3=normal+history
-            integer, intent( in )      :: ndims                    ! No. coords for nodes
-            integer, intent( in )      :: ndof                     ! No. DOFs for nodes
-            integer, intent( in )      :: nfacenodes               ! No. nodes on face
-            real( prec ), intent( in ) :: element_coords(:)        ! List of coords
-            real( prec ), intent( in ) :: element_dof_total(:)     ! List of DOFs (not currently used, provided for extension to finite deformations)
-            real( prec ), intent( in ) :: element_dof_increment(:) ! List of DOF increments (not used)
-            real( prec ), intent( in ) :: traction(:)              ! Traction value
-
-            real( prec ), intent( out )   :: element_stiffness(:,:)   ! Element stiffness (ROW,COLUMN)
-            real( prec ), intent( out )   :: element_residual(:)      ! Element residual force (ROW)
-  
-        end subroutine traction_boundarycondition_static
-    end interface
-
-
-
     ! Local Variables
     logical :: ignoredof
     real( prec ) :: ucur, dofvalue, dofvalue_correction, dloadvalue
@@ -412,9 +379,9 @@ subroutine apply_cojugategradient_boundaryconditions
                     end do
                 end do
   
-                call traction_boundarycondition_static(flag,ndims,ndof,nfacenodes,element_coords(1:ix),&
-                    element_dof_increment(1:iu),element_dof_total(1:iu),traction(1:ntract),&
-                    element_stiffness,element_residual)               ! Output variables
+                call traction_boundarycondition_static(flag,ndims,ndof,nfacenodes,element_coords(1:ix),ix,&
+                    element_dof_increment(1:iu),element_dof_total(1:iu),iu,traction(1:ntract),ntract,&
+                    element_stiffness(1:iu,1:iu),element_residual(1:iu))               ! Output variables
 
                 nsr = 0
                 do i1 = 1,nfacenodes
@@ -473,10 +440,10 @@ subroutine apply_cojugategradient_boundaryconditions
         
                 call user_distributed_load_static(lmn, element_list(lmn)%flag, ifac, &      ! Input variables
                     subroutine_parameters(param_index:param_index+nparam-1),nparam, &       ! Input variables
-                    element_list(lmn)%n_nodes, local_nodes, &       ! Input variables
+                    element_list(lmn)%n_nodes, local_nodes(1: element_list(lmn)%n_nodes), &       ! Input variables
                     element_list(lmn)%n_element_properties, element_properties(element_list(lmn)%element_property_index),  &     ! Input variables
-                    element_coords, element_dof_increment, element_dof_total,      &                              ! Input variables
-                    element_stiffness,element_residual)               ! Output variables
+                    element_coords(1:ix),ix, element_dof_increment(1:iu), element_dof_total(1:iu), iu,  &   ! Input variables
+                    element_stiffness(1:iu,1:iu),element_residual(1:iu) )              ! Output variables
 
                 !     --   Add element stiffness and residual to global array
 

@@ -1,0 +1,141 @@
+%
+%             Demonstration input file for simple general purpose FEA code EN234FEA
+%                                    A.F. Bower, August 2015
+%
+%             This example sets up a test of the Gurson dynamic fracture model (HW8) with 2 elements
+%
+%
+% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% MESH DEFINITION %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%
+    MESH
+
+%    The NODE command defines properties of the nodes.  
+%    The parameters are # of coords, # of DOF, and an optional integer identifier
+       NODES
+%    The parameters are # of coords, # of DOF, and an optional integer identifier
+       PARAMETERS, 3, 3, 1
+%      Specify which nodal DOF are displacements.  In the example, DOF 1 is the x displacement, 2 is the y displacement, 3 is the z displacement
+       DISPLACEMENT DOF, 1, 2, 3
+%    Enter x,y,z coords of nodes.   The node number is optional, and is ignored in the code.
+         COORDINATES
+         1,  0.d0, 0.d0, 0.d0
+         2,  1.d0, 0.d0, 0.d0
+         3,  1.d0, 1.d0, 0.d0
+         4,  0.d0, 1.d0, 0.d0
+         5,  0.d0, 0.d0, 1.d0
+         6,  1.d0, 0.d0, 1.d0
+         7,  1.d0, 1.d0, 1.d0
+         8,  0.d0, 1.d0, 1.d0
+         9,  2.d0, 0.d0, 0.d0
+        10,  2.d0, 1.d0, 0.d0
+        11,   2.d0, 0.d0, 1.d0
+        12,   2.d0, 1.d0, 1.d0
+        END COORDINATES
+      END NODES
+%
+%     The ELEMENT command defines properties of elements
+%     The parameters are no. nodes on the element, total no. state variables, integer identifier
+
+      ELEMENTS
+        PARAMETERS, 8, 80, 3001
+%       Define element properties - the values are passed to user subroutine elstif in the order they are listed here
+        PROPERTIES
+         1000.d0, 0.3d0   % E, nu
+         0.8d0, 10.01d0, 5.d0  % Y, edot0, m
+         1.25d0, 1.d0, 1.25d0  % q1, q2, q3
+         0.05d0, 0.1d0, 0.05d0  % fn, sn, en
+         0.15d0, 0.25d0  % fc, ff
+        END PROPERTIES
+%     Define mass density (for explicity dynamics only)
+       DENSITY, 10.d0
+%     Define element connectivity
+%     The element number (first number in the list) is optional, and is ignored in the code
+        CONNECTIVITY, zone1
+    1,     1, 2, 3, 4, 5, 6, 7, 8
+    2,     2, 9, 10, 3, 6, 11, 12, 7
+        END CONNECTIVITY
+
+%     The PROPERTIES, PARAMETERS, CONNECTIVITY keywords can be repeated here to define more set of elements with different properties
+
+        END ELEMENTS
+        END MESH
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% BOUNDARY CONDITIONS %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%     The BOUNDARY conditions key starts definition of BCs
+      BOUNDARY CONDITIONS
+
+%       The HISTORY key defines a time history that can be applied to DOFs or distributed loads
+        HISTORY, dof_history
+          0.d0, 0.d0                  % Each line gives a time value and then a function value
+         10.d0, 0.1d0
+        END HISTORY
+
+
+%       The NODESET key defines a list of nodes
+        NODESET, left
+           1, 4, 5, 8
+        END NODESET
+        NODESET, right
+           9, 10, 12, 11
+        END NODESET
+        NODESET, side
+           1, 2, 5, 6, 11, 9
+        END NODESET
+
+%      The ELEMENTSET key defines a list of elements
+       ELEMENTSET, end_element
+           2
+       END ELEMENTSET
+
+%       The DEGREE OF FREEDOM key assigns values to nodal DOFs
+%       The syntax is node set name, DOF number, and either a value or a history name.
+%     
+        DEGREES OF FREEDOM
+%           side, 2, VALUE, 0.d0
+           left, 1, VALUE, 0.d0
+           right, 1, HISTORY, dof_history
+        END DEGREES OF FREEDOM
+
+
+
+
+   END BOUNDARY CONDITIONS
+
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% Analysis %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%   The EXPLICIT DYNAMIC STEP key initializes a dynamic load step
+
+     EXPLICIT DYNAMIC STEP
+
+%        The TIME STEP key defines values of parameters controlling time stepping.
+%        The parameters are time step, no. steps, no. steps between state prints, no. steps between user prints
+%        All parameters are required
+
+          TIME STEP, 0.01
+          NUMBER OF STEPS, 200
+          STATE PRINT STEPS, 10
+          USER PRINT STEPS, 210
+
+
+%      This prints the DOF values and projected nodal state for all solid elements to a tecplot readable file
+%      Nodal variables are printed as
+%         X, Y, (Z), Ux, Uy, (Uz), Projected states.
+%         The projected states are controlled by the user - see subroutine elstat in file usrelem.f90
+%         Also (for this example file) subroutine state_linelast_3dbasic in file el_linelast_3Dbasic.f90
+%         In this example the states are the stresses sxx,syy,szz,sxy,sxz,syz
+         PRINT STATE, Output_files\contourplots.dat
+            DEGREES OF FREEDOM
+            FIELD VARIABLES, S11,S22,S33,S12,S13,S23,Vf
+            DISPLACED MESH
+            DISPLACEMENT SCALE FACTOR, 1.d0
+         END PRINT STATE
+
+
+        END EXPLICIT DYNAMIC STEP
+         
+
+   STOP

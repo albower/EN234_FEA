@@ -11,21 +11,44 @@ subroutine check_stiffness(element_flag)
     integer         :: lmn,n,i,j,k,iof
     integer         :: ix,iu,ns
     integer         :: icount,icount2
+    integer         :: status
 
-    real( prec )    :: element_coords(length_coord_array)
-    real( prec )    :: element_dof_increment(length_dof_array)
-    real( prec )    :: element_dof_total(length_dof_array)
-                                                            
-    real( prec )   :: element_stiffness(length_dof_array,length_dof_array),stif1(length_dof_array,length_dof_array)
-    real( prec )   :: numerical_stiffness(length_dof_array,length_dof_array)
-    real( prec )   :: resid0(length_dof_array),resid1(length_dof_array)
-          
-
-    type (node) local_nodes(length_node_array)
-
-   
     real ( prec ) :: err
     logical :: fail
+
+    real( prec ), allocatable    :: element_coords(:)
+    real( prec ), allocatable    :: element_dof_increment(:)
+    real( prec ), allocatable    :: element_dof_total(:)
+                                                            
+    real( prec ), allocatable   :: element_stiffness(:,:)
+    real( prec ), allocatable   :: stif1(:,:)
+    real( prec ), allocatable   :: numerical_stiffness(:,:)
+    real( prec ), allocatable   :: element_residual(:)
+    real( prec ), allocatable   :: resid0(:)
+    real( prec ), allocatable   :: resid1(:)
+
+    type (node), allocatable ::  local_nodes(:)
+
+    !     Subroutine to assemble global stiffness matrix
+
+    allocate(element_coords(length_coord_array), stat = status)
+    allocate(element_dof_increment(length_dof_array), stat = status)
+    allocate(element_dof_total(length_dof_array), stat = status)
+    allocate(local_nodes(length_node_array), stat = status)
+    allocate(element_stiffness(length_dof_array,length_dof_array), stat = status)
+    allocate(numerical_stiffness(length_dof_array,length_dof_array), stat = status)
+    allocate(stif1(length_dof_array,length_dof_array), stat = status)
+    allocate(element_residual(length_dof_array), stat = status)
+    allocate(resid0(length_dof_array), stat = status)
+    allocate(resid1(length_dof_array), stat = status)
+
+    if (status/=0) then
+        write(IOW,*) ' Error in subroutine check_stiffness '
+        write(IOW,*) ' Unable to allocate memory for user subroutines '
+        stop
+    endif
+
+
   
     !
     ! Find an element of type element_flag
@@ -73,11 +96,12 @@ subroutine check_stiffness(element_flag)
     iof = element_list(lmn)%state_index
     if (iof==0) iof = 1
     ns = element_list(lmn)%n_states
-    call user_element_static(lmn, element_list(lmn)%flag, element_list(lmn)%n_nodes, local_nodes, &       ! Input variables
+    call user_element_static(lmn, element_list(lmn)%flag, element_list(lmn)%n_nodes, &
+        local_nodes(1:element_list(lmn)%n_nodes), &       ! Input variables
         element_list(lmn)%n_element_properties, element_properties(element_list(lmn)%element_property_index),  &     ! Input variables
-        element_coords, element_dof_increment, element_dof_total,      &                              ! Input variables
+        element_coords(1:ix),ix, element_dof_increment(1:iu), element_dof_total(1:iu), iu,      &                              ! Input variables
         ns, initial_state_variables(iof:iof+ns), &                           ! Input variables
-        updated_state_variables(iof:iof+ns),element_stiffness,resid0, fail)               ! Output variables
+        updated_state_variables(iof:iof+ns),element_stiffness(1:iu,1:iu),resid0(1:iu), fail)               ! Output variables
 
     !     Compute numerical derivative of stiffness
 
@@ -87,11 +111,12 @@ subroutine check_stiffness(element_flag)
             icount = icount + 1
             element_dof_increment(icount) = element_dof_increment(icount) + 1.D-07
 
-            call user_element_static(lmn, element_list(lmn)%flag, element_list(lmn)%n_nodes, local_nodes, &       ! Input variables
-                element_list(lmn)%n_element_properties, element_properties(element_list(lmn)%element_property_index),  &     ! Input variables
-                element_coords, element_dof_increment, element_dof_total,      &                              ! Input variables
-                ns, initial_state_variables(iof:iof+ns), &                           ! Input variables
-                updated_state_variables(iof:iof+ns),stif1,resid1, fail)               ! Output variables
+            call user_element_static(lmn, element_list(lmn)%flag, element_list(lmn)%n_nodes, &
+                 local_nodes(1:element_list(lmn)%n_nodes), &       ! Input variables
+                 element_list(lmn)%n_element_properties, element_properties(element_list(lmn)%element_property_index),  &     ! Input variables
+                 element_coords(1:ix),ix, element_dof_increment(1:iu), element_dof_total(1:iu), iu,      &                              ! Input variables
+                 ns, initial_state_variables(iof:iof+ns), &                           ! Input variables
+                 updated_state_variables(iof:iof+ns),stif1(1:iu,1:iu),resid1(1:iu), fail)               ! Output variables
           
             numerical_stiffness(1:iu,icount) = -(resid1(1:iu)-resid0(1:iu))/1.D-07
 
@@ -133,6 +158,18 @@ subroutine check_stiffness(element_flag)
 
         end do
     end do
+
+    deallocate(element_coords)
+    deallocate(element_dof_increment)
+    deallocate(element_dof_total)
+    deallocate(local_nodes)
+    deallocate(element_stiffness)
+    deallocate(stif1)
+    deallocate(numerical_stiffness)
+    deallocate(element_residual)
+    deallocate(resid0)
+    deallocate(resid1)
+
 
     return
 

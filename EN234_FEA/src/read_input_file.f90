@@ -42,6 +42,9 @@ subroutine read_input_file
     integer :: nc             ! Constraint index
     integer :: nset           ! Node set counter
     integer :: j
+    integer :: start_node     ! Start node for a node set, generate key
+    integer :: end_node       ! end node for a node set, generate
+    integer :: increment      ! Increment for a node set, generate key
    
     real (prec) :: coord_scale_factor   !  coordinates read from file are scaled by this factor
 
@@ -117,6 +120,7 @@ subroutine read_input_file
     ! Default print control parameters
     print_displacedmesh = .false.
     zone_print_flag = .true.
+    use_lumped_projection_matrix = .false.
     zone_dimension = 0
     zone_ndof = 0
     print_dof = .false.
@@ -289,11 +293,58 @@ subroutine read_input_file
 
                                 if ( strcmp(strpar(1), 'ENDINIT', 7) ) then
                                     exit
+                                elseif (strcmp(strpar(1), 'USERSUBR', 8) ) then
+                                    iof = n_mesh_parameters+1
+                                    do while (.true.)
+                                        read (IOR, 99001, ERR = 200, end = 500) strin
+                                        if (echo) write(IOW,*) strin
+                                        call parse(strin, strpar, 100, nstr, lenstr, ityp, iblnk)
+                                        if ( iblnk==1 ) cycle
+                                        if (strcmp(strpar(1),'ENDUS',5) ) then
+                                            exit
+                                        endif
+                                        do k = 1,nstr
+                                            if (ityp(k)<2) then
+                                                n_mesh_parameters = n_mesh_parameters + 1
+                                                read(strpar(k),*) mesh_subroutine_parameters(n_mesh_parameters)
+                                            else
+                                                write(IOW,'(A)') ' *** Error in input file ***'
+                                                write(IOW,'(A)') ' Expecting a list of parameters for user-subroutine generated DOF'
+                                                write(IOW,'(A)') ' Found '
+                                                write(IOW,'(A)') strin
+                                            endif
+                                        end do
+                                    end do
+
+                                    if (n_mesh_parameters-iof==0) then
+                                        write(IOW,*) ' *** Error in input file *** '
+                                        write(IOW,*) ' No parameters were supplied for user subroutine generating DOF '
+                                        stop
+                                    endif
+
+                                    do nodenum = 1,n_nodes
+                                        iof1 = node_list(nodenum)%dof_index
+                                        iof2 = node_list(nodenum)%coord_index
+                                        ndof = node_list(nodenum)%n_dof
+                                        ncoor = node_list(nodenum)%n_coords
+                                        call user_initialdof(mesh_subroutine_parameters(iof:iof+n_mesh_parameters-1), &
+                                            n_mesh_parameters-iof+1, &
+                                            nodenum,coords(iof2:iof2+ncoor-1),ncoor, &
+                                            dof_total(iof1:iof1+ndof-1),dof_increment(iof1:iof1+ndof-1),ndof)
+                                    end do
+
+
                                 elseif (strcmp(strpar(1), 'ALLNODES', 8) ) then
                                     ! Initialize DOF for all nodes with one line
 
                                     do nodenum = 1,n_nodes
                                         iof = node_list(nodenum)%dof_index
+                                        if (node_list(nodenum)%n_dof /= nstr-1) then
+                                            write(IOW,*) ' *** Error detected in input file ***'
+                                            write(IOW,*) ' Incorrect number of DOF specified in an INITIAL DOF statement'
+                                            write(IOW,*) ' node ',nodenum,' has ',node_list(nodenum)%n_dof,' dof'
+                                            stop
+                                        endif
                                         if (iopt==1) then
                                             do k = 1, nstr-1
                                                 read (strpar(k+1), *) dof_total(iof+k-1)
@@ -445,7 +496,7 @@ subroutine read_input_file
                                 if (nstr < nnod.or.nstr > nnod+1) then
                                     write(IOW,*) ' *** Error in input file *** '
                                     write(IOW,*) ' Expecting element number (optional) and ',nnod,&
-                                                             ' nodes for an element but found ',nstr
+                                        ' nodes for an element but found ',nstr
                                     write(IOW,*) strin
                                     stop
                                 endif
@@ -599,23 +650,45 @@ subroutine read_input_file
                     read(strpar(2),*) nodeset_namelist(n_nodesets)
                     nodeset_list(n_nodesets)%index = length_node_lists + 1
                     nodeset_list(n_nodesets)%n_nodes = 0
-              
-                    do while (.true.)
-                        iblnk =1
-                        read (IOR, 99001, ERR = 200, end = 500) strin
-                        if (echo) write(IOW,*) strin
-                        call parse(strin, strpar, 100, nstr, lenstr, ityp, iblnk)
-                        if (iblnk==1) cycle
+                    if (nstr==3) then
+                        do while (.true.)
+                            iblnk =1
+                            read (IOR, 99001, ERR = 500, end = 500) strin
+                            if (echo) write(IOW,*) strin
+                            call parse(strin, strpar, 100, nstr, lenstr, ityp, iblnk)
+                            if (iblnk==1) cycle
 
-                        if ( strcmp(strpar(1), 'ENDNODE', 7) ) then
-                            exit
-                        endif
-                        do k = 1,nstr
-                            length_node_lists = length_node_lists + 1
-                            read(strpar(k),*) node_lists(length_node_lists)
-                            nodeset_list(n_nodesets)%n_nodes = nodeset_list(n_nodesets)%n_nodes + 1
+                            if ( strcmp(strpar(1), 'ENDNODE', 7) ) then
+                                exit
+                            endif
+                            read(strpar(1), *) start_node
+                            read(strpar(2), *) end_node
+                            read(strpar(3), *) increment
+                            if (increment==0) increment=1
+                            do k = start_node,end_node,increment
+                                length_node_lists = length_node_lists + 1
+                                node_lists(length_node_lists) = k
+                                nodeset_list(n_nodesets)%n_nodes = nodeset_list(n_nodesets)%n_nodes + 1
+                            end do
                         end do
-                    end do
+                    else
+                        do while (.true.)
+                            iblnk =1
+                            read (IOR, 99001, ERR = 200, end = 500) strin
+                            if (echo) write(IOW,*) strin
+                            call parse(strin, strpar, 100, nstr, lenstr, ityp, iblnk)
+                            if (iblnk==1) cycle
+
+                            if ( strcmp(strpar(1), 'ENDNODE', 7) ) then
+                                exit
+                            endif
+                            do k = 1,nstr
+                                length_node_lists = length_node_lists + 1
+                                read(strpar(k),*) node_lists(length_node_lists)
+                                nodeset_list(n_nodesets)%n_nodes = nodeset_list(n_nodesets)%n_nodes + 1
+                            end do
+                        end do
+                    endif
                 else if (strcmp(strpar(1), 'ELEMENTSET', 10) ) then
           
                     n_elementsets = n_elementsets + 1
@@ -656,7 +729,7 @@ subroutine read_input_file
                             prescribeddof_list(n_prescribeddof)%node_set = 0
                         else if (ityp(1)==2) then
                             prescribeddof_list(n_prescribeddof)%node_set = &
-                                             find_name_index(strpar(1),lenstr(1),nodeset_namelist,n_nodesets)
+                                find_name_index(strpar(1),lenstr(1),nodeset_namelist,n_nodesets)
                         else
                             write(IOW,*) ' *** Error in input file ***'
                             write(IOW,*) ' Expecting a node number or node set name in a degree of freedom'
@@ -683,7 +756,7 @@ subroutine read_input_file
                             prescribeddof_list(n_prescribeddof)%index_dof_values = 0
                             prescribeddof_list(n_prescribeddof)%history_number = 0
                             prescribeddof_list(n_prescribeddof)%subroutine_parameter_number = &
-                            find_name_index(strpar(4),lenstr(4),subroutineparameter_namelist,n_subroutine_parameters)
+                                find_name_index(strpar(4),lenstr(4),subroutineparameter_namelist,n_subroutine_parameters)
                         else
                             write(IOW,*) ' *** Error in input file *** '
                             write(IOW,*) ' Expecting key VALUE, HISTORY, or SUBROUTINE in a dof definition '
@@ -817,6 +890,7 @@ subroutine read_input_file
                                 distributedload_list(n_distributedloads)%n_dload_values = &
                                     distributedload_list(n_distributedloads)%n_dload_values + 1
                                 read(strpar(k), *) dload_values(length_dload_values)
+
                             end do
                         else if (strcmp(strpar(3), 'NORMAL', 5)) then
                             distributedload_list(n_distributedloads)%flag = 3
@@ -1282,6 +1356,7 @@ subroutine read_input_file
             end do
         else if (strcmp(strpar(1), 'EXPLICITDYNAMICSTEP',19) ) then
             explicitdynamicstep = .true.
+            use_lumped_projection_matrix = .true.
 
             do while (.true.)
                 iblnk =1
@@ -1511,8 +1586,14 @@ subroutine read_input_file
             length_node_array = 0
             length_coord_array = 0
             length_dof_array = 0
+            length_property_array = 0
+            length_state_variable_array = 0
             do lmn = 1,n_elements
                 if (element_list(lmn)%n_nodes>length_node_array) length_node_array = element_list(lmn)%n_nodes
+                if (element_list(lmn)%n_element_properties>length_property_array) then
+                    length_property_array = element_list(lmn)%n_element_properties
+                endif
+                if (element_list(lmn)%n_states>length_state_variable_array) length_state_variable_array=element_list(lmn)%n_states
                 ix = 0
                 iu = 0
                 do j = 1,element_list(lmn)%n_nodes
@@ -1864,6 +1945,9 @@ subroutine allocate_mesh_storage
     integer :: nnod          ! no. nodes on an element
     integer :: nsvar         ! no. state vars on an element
     integer :: n             ! Number of created nodes
+    integer :: start_node    ! First node in a generated node set
+    integer :: end_node      ! Last node in a generated node set
+    integer :: increment     ! Increment in a generated node set
   
     logical :: strcmp
 
@@ -1957,7 +2041,7 @@ subroutine allocate_mesh_storage
                                 write (IOW,*) '  *** ERROR DETECTED IN INPUT FILE ***'
                                 write (IOW,*) strin
                                 write (IOW,*) ' No. coords, no. dof, and an optional integer',&
-                                '                      identifier must be supplied with node keyword'
+                                    '                      identifier must be supplied with node keyword'
                                 stop
                             end if
                             read (strpar(2), *) ncoor
@@ -2010,7 +2094,38 @@ subroutine allocate_mesh_storage
                                 end do
                                 length_dofs = length_dofs + ndof
                             end do
-                        !        Finished reading nodes
+                        else if ( strcmp(strpar(1), 'INIT', 4) ) then
+                            !        Finished reading nodes
+                            do while(.true.)
+                                read (IOR, 99001, ERR = 500, end = 500) strin
+                                if (echo) write(IOW,*) strin
+                                call parse(strin, strpar, 100, nstr, lenstr, ityp, iblnk)
+                                if ( iblnk==1 ) cycle
+                                if ( strcmp(strpar(1), 'ENDINIT', 7) ) then
+                                    exit
+                                elseif (strcmp(strpar(1), 'USERSUBR', 8) ) then
+                                    do while (.true.)
+                                        read (IOR, 99001, ERR = 500, end = 500) strin
+                                        if (echo) write(IOW,*) strin
+                                        call parse(strin, strpar, 100, nstr, lenstr, ityp, iblnk)
+                                        if ( iblnk==1 ) cycle
+                                        if (strcmp(strpar(1),'ENDUS',5) ) then
+                                            exit
+                                        endif
+                                        do k = 1,nstr
+                                            if (ityp(k)<2) then
+                                                n_mesh_parameters = n_mesh_parameters + 1
+                                            else
+                                                write(IOW,'(A)') ' *** Error in input file ***'
+                                                write(IOW,'(A)') ' Expecting a list of parameters for user-subroutine generated DOF'
+                                                write(IOW,'(A)') ' Found '
+                                                write(IOW,'(A)') strin
+                                            endif
+                                        end do
+                                    end do
+                                endif
+                            end do
+
                         else if ( strcmp(strpar(1), 'ENDNODE', 7) ) then
                             exit
                         else
@@ -2114,12 +2229,17 @@ subroutine allocate_mesh_storage
                         allocate(dof_total(length_dofs), stat = status)
                         allocate(rforce(length_dofs), stat = status)
                     endif
-                    if (n_elements>0) allocate(element_list(n_elements), stat = status)
+                    if (n_elements>0) then
+                        allocate(element_list(n_elements), stat = status)
+                        allocate(element_deleted(n_elements), stat=status)
+                        element_deleted = .false.
+                    endif
                     if (length_connectivity>0) allocate(connectivity(length_connectivity), stat = status)
                     if (n_mesh_parameters>0) allocate(mesh_subroutine_parameters(n_mesh_parameters), stat=status)
                     if (length_state_variables>0) then
                         allocate(initial_state_variables(length_state_variables), stat = status)
                         allocate(updated_state_variables(length_state_variables), stat = status)
+                        initial_state_variables = 0.d0
                     else
                         allocate(initial_state_variables(1), stat = status)                      ! Used as dummy variable in user subroutine
                         allocate(updated_state_variables(1), stat = status)
@@ -2260,27 +2380,62 @@ subroutine allocate_mesh_storage
                         write(IOW,*) ' NODESET key was used without specifying a name for the node set '
                         stop
                     endif
-                    do while (.true.)
-                        iblnk =1
-                        read (IOR, 99001, ERR = 500, end = 500) strin
-                        if (echo) write(IOW,*) strin
-                        call parse(strin, strpar, 100, nstr, lenstr, ityp, iblnk)
-                        if (iblnk==1) cycle
-
-                        if ( strcmp(strpar(1), 'ENDNODE', 7) ) then
-                            exit
+                    if (nstr==3) then
+                        if ( .not.strcmp(strpar(3), 'GENERATE',8) ) then
+                            write(IOW,*) ' *** Error in input file *** '
+                            write(IOW,*) ' Expecting GENERATE option to generate a node set '
+                            write(IOW,*) ' Found '
+                            write(IOW,*) strin
+                            stop
                         endif
-                        do k = 1,nstr
-                            if (ityp(k) >1) then
+                        do while (.true.)
+                            iblnk =1
+                            read (IOR, 99001, ERR = 500, end = 500) strin
+                            if (echo) write(IOW,*) strin
+                            call parse(strin, strpar, 100, nstr, lenstr, ityp, iblnk)
+                            if (iblnk==1) cycle
+
+                            if ( strcmp(strpar(1), 'ENDNODE', 7) ) then
+                                exit
+                            endif
+                            if (nstr/=3.or.ityp(1)/=0.or.ityp(2)/=0.or.ityp(3)/=0) then
                                 write(IOW,*) ' *** Error in input file *** '
-                                write(IOW,*) ' Expecting a list of nodes or an END NODE SET '
+                                write(IOW,*) ' Expecting start node, end node, increment for a GENERATE key '
                                 write(IOW,*) ' Found '
                                 write(IOW,*) strin
                                 stop
                             endif
-                            length_node_lists = length_node_lists + 1
+                            read(strpar(1), *) start_node
+                            read(strpar(2), *) end_node
+                            read(strpar(3), *) increment
+                            if (increment==0) increment=1
+                            do k = start_node,end_node,increment
+                                length_node_lists = length_node_lists + 1
+                            end do
                         end do
-                    end do
+                    else
+                        do while (.true.)
+                            iblnk =1
+                            read (IOR, 99001, ERR = 500, end = 500) strin
+                            if (echo) write(IOW,*) strin
+                            call parse(strin, strpar, 100, nstr, lenstr, ityp, iblnk)
+                            if (iblnk==1) cycle
+
+                            if ( strcmp(strpar(1), 'ENDNODE', 7) ) then
+                                exit
+                            endif
+                            do k = 1,nstr
+                                if (ityp(k) >1) then
+                                    write(IOW,*) ' *** Error in input file *** '
+                                    write(IOW,*) ' Expecting a list of nodes or an END NODE SET '
+                                    write(IOW,*) ' Found '
+                                    write(IOW,*) strin
+                                    stop
+                                endif
+                                length_node_lists = length_node_lists + 1
+                            end do
+                        end do
+                    endif
                 else if (strcmp(strpar(1), 'ELEMENTSET', 10) ) then
           
                     n_elementsets = n_elementsets + 1
@@ -2391,7 +2546,11 @@ subroutine allocate_mesh_storage
                             do k = 4,nstr
                                 length_dload_values = length_dload_values + 1
                             end do
-                        else if (strcmp(strpar(3), ' NORMAL ', 5)) then
+                        else if (strcmp(strpar(3), 'HISTORY', 7)) then
+                            do k = 5,nstr
+                                length_dload_values = length_dload_values + 1
+                            end do
+                        else if (strcmp(strpar(3), 'NORMAL', 5)) then
                             do k = 5,nstr
                                 length_dload_values = length_dload_values + 1
                             end do
@@ -2581,148 +2740,156 @@ subroutine allocate_mesh_storage
                         else if (strcmp(strpar(1),'FIELD',5) ) then
                             n_field_variables = nstr-1
                         else if (strcmp(strpar(1),'DEGR',4) ) then
-                        continue
-                    else if (strcmp(strpar(1),'ZON',3) ) then
-                    continue
-                else if (strcmp(strpar(1),'DISPL',5) ) then
-                continue
-            else if (strcmp(strpar(1),'ENDZ',4) ) then
-            continue
-        else
-            write(IOW,*) ' *** Error in input file *** '
-            write(IOW,*) ' Unexpected PRINT STATE option '
-            write(IOW,*) ' Found '
-            write(IOW,*) strin
-            write(IOW,*) ' An END PRINT STATE or END ZONES may be missing'
-            stop
-        endif
-    end do
-               
-else if (strcmp(strpar(1),'ENDSTATIC', 9) ) then
-    if (n_user_print_parameters>0) allocate(user_print_parameters(n_user_print_parameters), stat=status)
-    if (n_user_print_files>0) then
-        allocate(user_print_filenames(n_user_print_files), stat=status)
-        allocate(user_print_units(n_user_print_files), stat=status)
-    endif
-    if (n_field_variables>0) allocate(field_variable_names(n_field_variables), stat=status)
-    if (status/=0) then
-        write(IOW,*) ' Unable to allocate memory for static step '
-        stop
-    endif
-    exit
-else
-    cycle
-end if
-        
-end do
-else if ( strcmp(strpar(1), 'EXPLICITDYNAMICSTEP', 19) ) then
-    do while (.true.)
-        iblnk =1
-        read (IOR, 99001, ERR = 500, end = 500) strin
-        if (echo) write(IOW,*) strin
-        call parse(strin, strpar, 100, nstr, lenstr, ityp, iblnk)
-        if (iblnk==1) cycle
+                            cycle
+                        else if (strcmp(strpar(1),'ZON',3) ) then
+                            do while (.true.)
+                                iblnk =1
+                                read (IOR, 99001, ERR = 500, end = 500) strin
+                                if (echo) write(IOW,*) strin
+                                call parse(strin, strpar, 100, nstr, lenstr, ityp, iblnk)
+                                if (iblnk==1) cycle
+                                if (strcmp(strpar(1),'ENDZ',4) ) exit
+                            end do
+                        else if (strcmp(strpar(1),'DISPL',5) ) then
+                           cycle
+                    else
+                        write(IOW,*) ' *** Error in input file *** '
+                        write(IOW,*) ' Unexpected PRINT STATE option '
+                        write(IOW,*) ' Found '
+                        write(IOW,*) strin
+                        write(IOW,*) ' An END PRINT STATE or END ZONES may be missing'
+                        stop
+                    endif
 
-        if (strcmp(strpar(1),'USERPRINTF',10) ) then
-            do while (.true.)
-                iblnk =1
-                read (IOR, 99001, ERR = 500, end = 500) strin
-                if (echo) write(IOW,*) strin
-                call parse(strin, strpar, 100, nstr, lenstr, ityp, iblnk)
-                if (iblnk==1) cycle
-                if (strcmp(strpar(1),'ENDU',4) ) then
-                    exit
+                end do
+            else if (strcmp(strpar(1),'ENDSTATIC', 9) ) then
+                if (n_user_print_parameters>0) allocate(user_print_parameters(n_user_print_parameters), stat=status)
+                if (n_user_print_files>0) then
+                    allocate(user_print_filenames(n_user_print_files), stat=status)
+                    allocate(user_print_units(n_user_print_files), stat=status)
                 endif
-                if (nstr>1.or.ityp(1)<2) then
-                    write(IOW,*) ' *** Error in input file *** '
-                    write(IOW,*) ' USER PRINT FILES must be terminated by an END USER PRINT FILES'
-                    write(IOW,*) ' Found '
-                    write(IOW,*) strin
+                if (n_field_variables>0) allocate(field_variable_names(n_field_variables), stat=status)
+                if (status/=0) then
+                    write(IOW,*) ' Unable to allocate memory for static step '
                     stop
                 endif
-                n_user_print_files = n_user_print_files + 1
-                n_total_files = n_total_files + 1
-            end do
-        else if (strcmp(strpar(1),'USERPRINTP',10) ) then
-            do while (.true.)
-                iblnk =1
-                read (IOR, 99001, ERR = 500, end = 500) strin
-                if (echo) write(IOW,*) strin
-                call parse(strin, strpar, 100, nstr, lenstr, ityp, iblnk)
-                if (iblnk==1) cycle
-                if (strcmp(strpar(1),'ENDU',4) ) then
-                    exit
-                endif
-                if (ityp(1)==2) then
-                    write(IOW,*) ' *** Error in input file ***'
-                    write(IOW,*) ' USER PRINT PARAMETERS must be terminated by '
-                    write(IOW,*) ' an END USER PRINT PARAMETERS '
-                    write(IOW,*) ' Found '
-                    write(IOW,*) strin
-                    stop
-                endif
-                do k = 1,nstr
-                    if (ityp(k)==2) then
-                        write(IOW,*) ' Expecting an integer or real valued USER PRINT PARAMETER'
-                        write(IOW,*) ' Found'
+                exit
+            else
+                cycle
+            end if
+        
+        end do
+    else if ( strcmp(strpar(1), 'EXPLICITDYNAMICSTEP', 19) ) then
+        do while (.true.)
+            iblnk =1
+            read (IOR, 99001, ERR = 500, end = 500) strin
+            if (echo) write(IOW,*) strin
+            call parse(strin, strpar, 100, nstr, lenstr, ityp, iblnk)
+            if (iblnk==1) cycle
+
+            if (strcmp(strpar(1),'USERPRINTF',10) ) then
+                do while (.true.)
+                    iblnk =1
+                    read (IOR, 99001, ERR = 500, end = 500) strin
+                    if (echo) write(IOW,*) strin
+                    call parse(strin, strpar, 100, nstr, lenstr, ityp, iblnk)
+                    if (iblnk==1) cycle
+                    if (strcmp(strpar(1),'ENDU',4) ) then
+                        exit
+                    endif
+                    if (nstr>1.or.ityp(1)<2) then
+                        write(IOW,*) ' *** Error in input file *** '
+                        write(IOW,*) ' USER PRINT FILES must be terminated by an END USER PRINT FILES'
+                        write(IOW,*) ' Found '
                         write(IOW,*) strin
                         stop
                     endif
-                    n_user_print_parameters = n_user_print_parameters+1
+                    n_user_print_files = n_user_print_files + 1
+                    n_total_files = n_total_files + 1
                 end do
-            end do
-        else if (strcmp(strpar(1),'PRINTSTATE',10) ) then
-            n_total_files = n_total_files + 1
-            do while (.true.)
-                iblnk =1
-                read (IOR, 99001, ERR = 500, end = 500) strin
-                if (echo) write(IOW,*) strin
-                call parse(strin, strpar, 100, nstr, lenstr, ityp, iblnk)
-                if (iblnk==1) cycle
+            else if (strcmp(strpar(1),'USERPRINTP',10) ) then
+                do while (.true.)
+                    iblnk =1
+                    read (IOR, 99001, ERR = 500, end = 500) strin
+                    if (echo) write(IOW,*) strin
+                    call parse(strin, strpar, 100, nstr, lenstr, ityp, iblnk)
+                    if (iblnk==1) cycle
+                    if (strcmp(strpar(1),'ENDU',4) ) then
+                        exit
+                    endif
+                    if (ityp(1)==2) then
+                        write(IOW,*) ' *** Error in input file ***'
+                        write(IOW,*) ' USER PRINT PARAMETERS must be terminated by '
+                        write(IOW,*) ' an END USER PRINT PARAMETERS '
+                        write(IOW,*) ' Found '
+                        write(IOW,*) strin
+                        stop
+                    endif
+                    do k = 1,nstr
+                        if (ityp(k)==2) then
+                            write(IOW,*) ' Expecting an integer or real valued USER PRINT PARAMETER'
+                            write(IOW,*) ' Found'
+                            write(IOW,*) strin
+                            stop
+                        endif
+                        n_user_print_parameters = n_user_print_parameters+1
+                    end do
+                end do
+            else if (strcmp(strpar(1),'PRINTSTATE',10) ) then
+                n_total_files = n_total_files + 1
+                do while (.true.)
+                    iblnk =1
+                    read (IOR, 99001, ERR = 500, end = 500) strin
+                    if (echo) write(IOW,*) strin
+                    call parse(strin, strpar, 100, nstr, lenstr, ityp, iblnk)
+                    if (iblnk==1) cycle
 
-                if (strcmp(strpar(1),'ENDPR',5) ) then
-                    exit
-                else if (strcmp(strpar(1),'FIELD',5) ) then
-                    n_field_variables = nstr-1
-                else if (strcmp(strpar(1),'DEGR',4) ) then
-                continue
-            else if (strcmp(strpar(1),'ZON',3) ) then
-            continue
-        else if (strcmp(strpar(1),'DISPL',5) ) then
-        continue
-    else if (strcmp(strpar(1),'ENDZ',4) ) then
-    continue
-else
-    write(IOW,*) ' *** Error in input file *** '
-    write(IOW,*) ' Unexpected PRINT STATE option '
-    write(IOW,*) ' Found '
-    write(IOW,*) strin
-    write(IOW,*) ' An END PRINT STATE or END ZONES may be missing'
-    stop
-endif
-end do
+                    if (strcmp(strpar(1),'ENDPR',5) ) then
+                        exit
+                    else if (strcmp(strpar(1),'FIELD',5) ) then
+                        n_field_variables = nstr-1
+                    else if (strcmp(strpar(1),'DEGR',4) ) then
+                        cycle
+                    else if (strcmp(strpar(1),'ZON',3) ) then
+                        cycle
+                    else if (strcmp(strpar(1),'DISPL',5) ) then
+                        cycle
+                    else if (strcmp(strpar(1),'ENDZ',4) ) then
+                        cycle
+                    else
+                        write(IOW,*) ' *** Error in input file *** '
+                        write(IOW,*) ' Unexpected PRINT STATE option '
+                        write(IOW,*) ' Found '
+                        write(IOW,*) strin
+                        write(IOW,*) ' An END PRINT STATE or END ZONES may be missing'
+                        stop
+                    endif
+                end do
                
-else if (strcmp(strpar(1),'ENDEXP', 6) ) then
-    if (n_user_print_parameters>0) allocate(user_print_parameters(n_user_print_parameters), stat=status)
-    if (n_user_print_files>0) then
-        allocate(user_print_filenames(n_user_print_files), stat=status)
-        allocate(user_print_units(n_user_print_files), stat=status)
-    endif
-    if (n_field_variables>0) allocate(field_variable_names(n_field_variables), stat=status)
-    if (status/=0) then
-        write(IOW,*) ' Unable to allocate memory for explicit dynamic step '
-        stop
-    endif
-    exit
-else
-    cycle
-end if
+            else if (strcmp(strpar(1),'ENDEXP', 6) ) then
+                if (n_user_print_parameters>0) allocate(user_print_parameters(n_user_print_parameters), stat=status)
+                if (n_user_print_files>0) then
+                    allocate(user_print_filenames(n_user_print_files), stat=status)
+                    allocate(user_print_units(n_user_print_files), stat=status)
+                endif
+                if (n_field_variables>0) allocate(field_variable_names(n_field_variables), stat=status)
+
+                if (status/=0) then
+                    write(IOW,*) ' Unable to allocate memory for explicit dynamic step '
+                    stop
+                endif
+
+
+                exit
+            else
+                cycle
+            end if
         
-end do
+        end do
             
-else
-    cycle
-endif
+    else
+        cycle
+    endif
 end do
   
 500 continue                                          ! End of file
