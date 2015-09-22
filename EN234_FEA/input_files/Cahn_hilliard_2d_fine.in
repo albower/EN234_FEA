@@ -4653,7 +4653,7 @@
 
 %
 %     The ELEMENT command defines properties of elements
-%     The parameters are no. nodes on the element, no. properties, total no. state variables, integer identifier
+%     The parameters are no. nodes on the element, total no. state variables, integer identifier
 
       ELEMENTS
         PARAMETERS, 4, 0, 600

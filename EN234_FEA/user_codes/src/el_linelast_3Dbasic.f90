@@ -68,9 +68,8 @@ subroutine el_linelast_3dbasic(lmn, element_identifier, n_nodes, node_property_l
     !     Subroutine to compute element stiffness matrix and residual force vector for 3D linear elastic elements
     !     El props are:
 
-    !     EPROP(1)         Young's modulus
-    !     EPROP(2)         Poisson's ratio
-    !     EPROP(3)         Thermal expansion coefficient
+    !     element_properties(1)         Young's modulus
+    !     element_properties(2)         Poisson's ratio
 
     fail = .false.
     

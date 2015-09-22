@@ -4128,7 +4128,7 @@ END COORDINATES
 END NODES
 %
 %     The ELEMENT command defines properties of elements
-%     The parameters are no. nodes on the element, no. properties, total no. state variables, integer identifier  
+%     The parameters are no. nodes on the element, total no. state variables, integer identifier  
       ELEMENTS
 
        PARAMETERS, 8, 0, 1001

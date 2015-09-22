@@ -32,13 +32,10 @@
         11,   2.d0, 0.d0, 1.d0
         12,   2.d0, 1.d0, 1.d0
         END COORDINATES
-%        PARAMETERS, 0, 1, 2         % Reference node for constraint
-%        DISPLACEMENT DOF, NONE
-%        CREATE NODES, 1             % Node number 13 has no coordinates so we use the CREATE NODES option.  The number is the # nodes to be created.
       END NODES
 %
 %     The ELEMENT command defines properties of elements
-%     The parameters are no. nodes on the element, no. properties, total no. state variables, integer identifier
+%     The parameters are no. nodes on the element, total no. state variables, integer identifier
 
       ELEMENTS
         PARAMETERS, 8, 0, 1001
@@ -175,9 +172,8 @@
 %                        LINEAR for linear equations, NONLINEAR for nonlinear equations
 %                        For nonlinear solver, must specify convergence tolerance and max # iterations
 %                        UNSYMMETRIC  (optional - only for unsymmetric stiffness)
-%        It is silly to use the nonlinear option for linear elasticity, but is included here for demonstration purposes.
 
-         SOLVER, DIRECT, NONLINEAR, 1.d-05,15
+         SOLVER, DIRECT, LINEAR
 
 
 %      This prints the DOF values and projected nodal state for all solid elements to a tecplot readable file
