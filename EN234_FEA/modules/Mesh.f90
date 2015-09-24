@@ -107,34 +107,6 @@ contains
       n_state_variables = element_list(lmn)%n_states
       n_properties = element_list(lmn)%n_element_properties
 
-!      if (size(properties)< n_properties ) then
-!         write(IOW,*) ' Error in subroutine extract_element_data '
-!         write(IOW,*) ' The element has ',n_properties,' properties '
-!         write(IOW,*) ' but the length of the property array is ',size(properties)
-!         stop
-!      endif
-!
-!      if (size(node_list)< n_nodes ) then
-!         write(IOW,*) ' Error in subroutine extract_element_data '
-!         write(IOW,*) ' The element has ',n_nodes,' nodes '
-!         write(IOW,*) ' but the length of the node list array is ',size(properties)
-!         stop
-!      endif
-!
-!      if (size(initial_svars)< n_state_variables ) then
-!         write(IOW,*) ' Error in subroutine extract_element_data '
-!         write(IOW,*) ' The element has ',n_state_variables,' state variables '
-!         write(IOW,*) ' but the length of the initial state variable array is ',size(initial_svars)
-!         stop
-!      endif
-!
-!
-!      if (size(updated_svars)< n_state_variables ) then
-!         write(IOW,*) ' Error in subroutine extract_element_data '
-!         write(IOW,*) ' The element has ',n_state_variables,' state variables '
-!         write(IOW,*) ' but the length of the initial state variable array is ',size(updated_svars)
-!         stop
-!      endif
 
       node_list(1:n_nodes) = connectivity(element_list(lmn)%connect_index:element_list(lmn)%connect_index+n_nodes-1)
       if (n_properties>0) then
@@ -179,27 +151,6 @@ contains
       flag = node_list(nn)%flag
       n_coords = node_list(nn)%n_coords
       n_dof = node_list(nn)%n_dof
-
-!      if (size(nodal_coords)< n_coords ) then
-!         write(IOW,*) ' Error in subroutine extract_node_data '
-!         write(IOW,*) ' The node has ',n_coords,' coordinates '
-!         write(IOW,*) ' but the length of the coordinate array is ',size(nodal_coords)
-!         stop
-!      endif
-!
-!      if (size(nodal_dof_increment)< n_dof ) then
-!         write(IOW,*) ' Error in subroutine extract_node_data '
-!         write(IOW,*) ' The node has ',n_dof,' DOF '
-!         write(IOW,*) ' but the length of the total DOF array is ',size(nodal_dof_total)
-!         stop
-!      endif
-!
-!      if (size(nodal_dof_total)< n_dof ) then
-!         write(IOW,*) ' Error in subroutine extract_node_data '
-!         write(IOW,*) ' The node has ',n_dof,' DOF '
-!         write(IOW,*) ' but the length of the DOF increment array is ',size(nodal_dof_increment)
-!         stop
-!      endif
 
       nodal_coords(1:n_coords) = coords(node_list(nn)%coord_index:node_list(nn)%coord_index+n_coords-1)
       nodal_dof_increment(1:n_dof) = dof_increment(node_list(nn)%dof_index: &

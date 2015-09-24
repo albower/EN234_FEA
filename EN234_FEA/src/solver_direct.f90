@@ -276,41 +276,6 @@ subroutine apply_direct_boundaryconditions
     use Element_Utilities, only : facenodes
     implicit none
 
-!    interface
-!        subroutine traction_boundarycondition_static(flag,ndims,ndof,nfacenodes,element_coords,&
-!            element_dof_increment,element_dof_total,traction,&
-!            element_stiffness,element_residual)               ! Output variables
-!            use Types
-!            use ParamIO
-!            use Element_Utilities, only : N1 => shape_functions_1D
-!            use Element_Utilities, only : dNdxi1 => shape_function_derivatives_1D
-!            use Element_Utilities, only : dNdx1 => shape_function_spatial_derivatives_1D
-!            use Element_Utilities, only : xi1 => integrationpoints_1D, w1 => integrationweights_1D
-!            use Element_Utilities, only : N2 => shape_functions_2D
-!            use Element_Utilities, only : dNdxi2 => shape_function_derivatives_2D
-!            use Element_Utilities, only : dNdx2 => shape_function_spatial_derivatives_2D
-!            use Element_Utilities, only : xi2 => integrationpoints_2D, w2 => integrationweights_2D
-!            use Element_Utilities, only : initialize_integration_points
-!            use Element_Utilities, only : calculate_shapefunctions
-!
-!            implicit none
-!
-!            integer, intent( in )      :: flag                     ! Flag specifying traction type. 1=direct value; 2=history+direct; 3=normal+history
-!            integer, intent( in )      :: ndims                    ! No. coords for nodes
-!            integer, intent( in )      :: ndof                     ! No. DOFs for nodes
-!            integer, intent( in )      :: nfacenodes               ! No. nodes on face
-!            real( prec ), intent( in ) :: element_coords(:)        ! List of coords
-!            real( prec ), intent( in ) :: element_dof_total(:)     ! List of DOFs (not currently used, provided for extension to finite deformations)
-!            real( prec ), intent( in ) :: element_dof_increment(:) ! List of DOF increments (not used)
-!            real( prec ), intent( in ) :: traction(:)              ! Traction value
-!
-!            real( prec ), intent( out )   :: element_stiffness(:,:)   ! Element stiffness (ROW,COLUMN)
-!            real( prec ), intent( out )   :: element_residual(:)      ! Element residual force (ROW)
-!
-!        end subroutine traction_boundarycondition_static
-!    end interface
-
-
 
     ! Local Variables
     logical :: ignoredof
@@ -922,9 +887,6 @@ subroutine dredu(alow, aupp, diag, jh, ifl, dj)
     !     --- Finish computation of column of alow for unsymmetric matrices
     if ( ifl ) then
         alow(1:jh) = alow(1:jh)*diag(1:jh)
-    !    do j = 1, jh
-    !      alow(j) = alow(j)*diag(j)
-    !    end do
     end if
 
 end subroutine dredu
