@@ -195,9 +195,8 @@ subroutine el_linelast_3dbasic_dynamic(lmn, element_identifier, n_nodes, node_pr
     !     Subroutine to compute element force vector for a linear elastodynamic problem
     !     El props are:
 
-    !     EPROP(1)         Young's modulus
-    !     EPROP(2)         Poisson's ratio
-
+    !     element_properties(1)         Young's modulus
+    !     element_properties(2)         Poisson's ratio
     
     x = reshape(element_coords,(/3,length_coord_array/3/))
 
@@ -322,10 +321,8 @@ subroutine fieldvars_linelast_3dbasic(lmn, element_identifier, n_nodes, node_pro
     !
     !     Subroutine to compute element contribution to project element integration point data to nodes
 
-    !     EPROP(1)         Young's modulus
-    !     EPROP(2)         Poisson's ratio
-    !     EPROP(3)         Thermal expansion coefficient
-
+    !     element_properties(1)         Young's modulus
+    !     element_properties(2)         Poisson's ratio
 
     x = reshape(element_coords,(/3,length_coord_array/3/))
 
@@ -376,6 +373,7 @@ subroutine fieldvars_linelast_3dbasic(lmn, element_identifier, n_nodes, node_pro
         sdev = stress
         sdev(1:3) = sdev(1:3)-p
         smises = dsqrt( dot_product(sdev(1:3),sdev(1:3)) + 2.d0*dot_product(sdev(4:6),sdev(4:6)) )*dsqrt(1.5d0)
+        ! In the code below the strcmp( string1, string2, nchar) function returns true if the first nchar characters in strings match
         do k = 1,n_field_variables
             if (strcmp(field_variable_names(k),'S11',3) ) then
                 nodal_fieldvariables(k,1:n_nodes) = nodal_fieldvariables(k,1:n_nodes) + stress(1)*N(1:n_nodes)*determinant*w(kint)
