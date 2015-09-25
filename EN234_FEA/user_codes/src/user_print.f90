@@ -282,7 +282,7 @@ subroutine compute_J_integral(area_integral_option,Width,Height,J_integral_value
     allocate(element_properties(length_property_array), stat=status)
     allocate(initial_state_variables(length_state_variable_array), stat=status)
     allocate(updated_state_variables(length_state_variable_array), stat=status)
-    allocate(x(3,length_coord_array/3), stat=status)
+    allocate(x(2,length_coord_array/2), stat=status)
     allocate(dof_increment(length_dof_array), stat=status)
     allocate(dof_total(length_dof_array), stat=status)
     allocate(nodal_q(length_node_array), stat=status)
@@ -296,8 +296,8 @@ subroutine compute_J_integral(area_integral_option,Width,Height,J_integral_value
                                             n_state_variables,initial_state_variables,updated_state_variables)
 
     do i = 1, n_nodes
-        iof = 3*(i-1)+1     ! Points to first DOF for the node in the dof_increment and dof_total arrays
-        call extract_node_data(node_list(i),node_identifier,n_coords,x(1:3,i),n_dof, &
+        iof = 2*(i-1)+1     ! Points to first DOF for the node in the dof_increment and dof_total arrays
+        call extract_node_data(node_list(i),node_identifier,n_coords,x(1:2,i),n_dof, &
                                                  dof_increment(iof:iof+2),dof_total(iof:iof+2))
     end do
 
