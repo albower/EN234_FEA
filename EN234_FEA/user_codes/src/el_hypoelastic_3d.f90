@@ -1,9 +1,9 @@
-!     Subroutines for basic 3D linear elastic elements
+!     Subroutines for basic 3D linear elastic elements 
 
 
 
 !==========================SUBROUTINE el_linelast_3dbasic ==============================
-subroutine el_linelast_3dbasic(lmn, element_identifier, n_nodes, node_property_list, &           ! Input variables
+subroutine el_hypoelastic_3d(lmn, element_identifier, n_nodes, node_property_list, &           ! Input variables
     n_properties, element_properties, element_coords, length_coord_array, &                      ! Input variables
     dof_increment, dof_total, length_dof_array, &                                                ! Input variables
     n_state_variables, initial_state_variables, &                                                ! Input variables
@@ -15,6 +15,7 @@ subroutine el_linelast_3dbasic(lmn, element_identifier, n_nodes, node_property_l
     use Element_Utilities, only : N => shape_functions_3D
     use Element_Utilities, only : dNdxi => shape_function_derivatives_3D
     use Element_Utilities, only:  dNdx => shape_function_spatial_derivatives_3D
+    use Element_Utilities, only:  dNbardx => vol_avg_shape_function_derivatives_3D
     use Element_Utilities, only : xi => integrationpoints_3D, w => integrationweights_3D
     use Element_Utilities, only : dxdxi => jacobian_3D
     use Element_Utilities, only : initialize_integration_points
@@ -55,7 +56,7 @@ subroutine el_linelast_3dbasic(lmn, element_identifier, n_nodes, node_property_l
           
 
     ! Local Variables
-    integer      :: n_points,kint
+    integer      :: n_points,kint,i
 
     real (prec)  ::  strain(6), dstrain(6)             ! Strain vector contains [e11, e22, e33, 2e12, 2e13, 2e23]
     real (prec)  ::  stress(6)                         ! Stress vector contains [s11, s22, s33, s12, s13, s23]
@@ -63,13 +64,15 @@ subroutine el_linelast_3dbasic(lmn, element_identifier, n_nodes, node_property_l
     real (prec)  ::  B(6,length_dof_array)             ! strain = B*(dof_total+dof_increment)
     real (prec)  ::  dxidx(3,3), determinant           ! Jacobian inverse and determinant
     real (prec)  ::  x(3,length_coord_array/3)         ! Re-shaped coordinate array x(i,a) is ith coord of ath node
-    real (prec)  :: E, xnu, D44, D11, D12              ! Material properties
+    real (prec)  ::  el_vol
+
     !
     !     Subroutine to compute element stiffness matrix and residual force vector for 3D linear elastic elements
     !     El props are:
 
-    !     element_properties(1)         Young's modulus
-    !     element_properties(2)         Poisson's ratio
+    !     EPROP(1)         Young's modulus
+    !     EPROP(2)         Poisson's ratio
+    !     EPROP(3)         Thermal expansion coefficient
 
     fail = .false.
     
@@ -82,23 +85,22 @@ subroutine el_linelast_3dbasic(lmn, element_identifier, n_nodes, node_property_l
 
     call initialize_integration_points(n_points, n_nodes, xi, w)
 
+    !   Volume averaged element variables
+    dNbardx = 0.d0
+    el_vol = 0.d0
+    do kint = 1,n_points
+        call calculate_shapefunctions(xi(1:3,kint),n_nodes,N,dNdxi)
+        dxdxi = matmul(x(1:3,1:n_nodes),dNdxi(1:n_nodes,1:3))
+        call invert_small(dxdxi,dxidx,determinant)
+        dNdx(1:n_nodes,1:3) = matmul(dNdxi(1:n_nodes,1:3),dxidx)
+        dNbardx = dNbardx + dNdx*w(kint)*determinant
+        el_vol = el_vol + w(kint)*determinant
+    end do
+    dNbardx = dNbardx/el_vol
+
     element_residual = 0.d0
     element_stiffness = 0.d0
 	
-    D = 0.d0
-    E = element_properties(1)
-    xnu = element_properties(2)
-    d44 = 0.5D0*E/(1+xnu) 
-    d11 = (1.D0-xnu)*E/( (1+xnu)*(1-2.D0*xnu) )
-    d12 = xnu*E/( (1+xnu)*(1-2.D0*xnu) )
-    D(1:3,1:3) = d12
-    D(1,1) = d11
-    D(2,2) = d11
-    D(3,3) = d11
-    D(4,4) = d44
-    D(5,5) = d44
-    D(6,6) = d44
-  
     !     --  Loop over integration points
     do kint = 1, n_points
         call calculate_shapefunctions(xi(1:3,kint),n_nodes,N,dNdxi)
@@ -116,10 +118,17 @@ subroutine el_linelast_3dbasic(lmn, element_identifier, n_nodes, node_property_l
         B(6,2:3*n_nodes-1:3) = dNdx(1:n_nodes,3)
         B(6,3:3*n_nodes:3)   = dNdx(1:n_nodes,2)
 
+        do i = 1,3
+            B(i,1:3*n_nodes-2:3) = B(i,1:3*n_nodes-2:3) +(dNbardx(1:n_nodes,1)-dNdx(1:n_nodes,1))/3.d0
+            B(i,2:3*n_nodes-1:3) = B(i,2:3*n_nodes-1:3)+(dNbardx(1:n_nodes,2)-dNdx(1:n_nodes,2))/3.d0
+            B(i,3:3*n_nodes:3)   = B(i,3:3*n_nodes:3)  +(dNbardx(1:n_nodes,3)-dNdx(1:n_nodes,3))/3.d0
+        end do
+
         strain = matmul(B,dof_total)
         dstrain = matmul(B,dof_increment)
       
-        stress = matmul(D,strain+dstrain)
+        call hypoelastic_material(element_properties,n_properties,strain,dstrain,stress,D)
+
         element_residual(1:3*n_nodes) = element_residual(1:3*n_nodes) - matmul(transpose(B),stress)*w(kint)*determinant
 
         element_stiffness(1:3*n_nodes,1:3*n_nodes) = element_stiffness(1:3*n_nodes,1:3*n_nodes) &
@@ -128,11 +137,11 @@ subroutine el_linelast_3dbasic(lmn, element_identifier, n_nodes, node_property_l
     end do
   
     return
-end subroutine el_linelast_3dbasic
+end subroutine el_hypoelastic_3d
 
 
 !==========================SUBROUTINE el_linelast_3dbasic_dynamic ==============================
-subroutine el_linelast_3dbasic_dynamic(lmn, element_identifier, n_nodes, node_property_list, &           ! Input variables
+subroutine el_hypoelastic_3d_dynamic(lmn, element_identifier, n_nodes, node_property_list, &           ! Input variables
     n_properties, element_properties,element_coords, length_coord_array, &                               ! Input variables
     dof_increment, dof_total, length_dof_array,  &                                                       ! Input variables
     n_state_variables, initial_state_variables, &                                                        ! Input variables
@@ -190,13 +199,13 @@ subroutine el_linelast_3dbasic_dynamic(lmn, element_identifier, n_nodes, node_pr
     real (prec)  ::  B(6,length_dof_array)             ! strain = B*(dof_total+dof_increment)
     real (prec)  ::  dxidx(3,3), determinant           ! Jacobian inverse and determinant
     real (prec)  ::  x(3,length_coord_array/3)         ! Re-shaped coordinate array x(i,a) is ith coord of ath node
-    real (prec)  :: E, xnu, D44, D11, D12              ! Material properties
     !
     !     Subroutine to compute element force vector for a linear elastodynamic problem
     !     El props are:
 
-    !     element_properties(1)         Young's modulus
-    !     element_properties(2)         Poisson's ratio
+    !     EPROP(1)         Young's modulus
+    !     EPROP(2)         Poisson's ratio
+
     
     x = reshape(element_coords,(/3,length_coord_array/3/))
 
@@ -208,21 +217,7 @@ subroutine el_linelast_3dbasic_dynamic(lmn, element_identifier, n_nodes, node_pr
     call initialize_integration_points(n_points, n_nodes, xi, w)
 
     element_residual = 0.d0
-	
-    D = 0.d0
-    E = element_properties(1)
-    xnu = element_properties(2)
-    d44 = 0.5D0*E/(1+xnu) 
-    d11 = (1.D0-xnu)*E/( (1+xnu)*(1-2.D0*xnu) )
-    d12 = xnu*E/( (1+xnu)*(1-2.D0*xnu) )
-    D(1:3,1:3) = d12
-    D(1,1) = d11
-    D(2,2) = d11
-    D(3,3) = d11
-    D(4,4) = d44
-    D(5,5) = d44
-    D(6,6) = d44
-  
+
     !     --  Loop over integration points
     do kint = 1, n_points
         call calculate_shapefunctions(xi(1:3,kint),n_nodes,N,dNdxi)
@@ -243,17 +238,18 @@ subroutine el_linelast_3dbasic_dynamic(lmn, element_identifier, n_nodes, node_pr
         strain = matmul(B,dof_total)
         dstrain = matmul(B,dof_increment)
       
-        stress = matmul(D,strain+dstrain)
+        call hypoelastic_material(element_properties,n_properties,strain,dstrain,stress,D)
+
         element_residual(1:3*n_nodes) = element_residual(1:3*n_nodes) - matmul(transpose(B),stress)*w(kint)*determinant
 
     end do
   
     return
-end subroutine el_linelast_3dbasic_dynamic
+end subroutine el_hypoelastic_3d_dynamic
 
 
 !==========================SUBROUTINE fieldvars_linelast_3dbasic ==============================
-subroutine fieldvars_linelast_3dbasic(lmn, element_identifier, n_nodes, node_property_list, &           ! Input variables
+subroutine fieldvars_hypoelastic_3d(lmn, element_identifier, n_nodes, node_property_list, &           ! Input variables
     n_properties, element_properties,element_coords,length_coord_array, &                                ! Input variables
     dof_increment, dof_total, length_dof_array,  &                                                      ! Input variables
     n_state_variables, initial_state_variables,updated_state_variables, &                               ! Input variables
@@ -265,6 +261,7 @@ subroutine fieldvars_linelast_3dbasic(lmn, element_identifier, n_nodes, node_pro
     use Element_Utilities, only : N => shape_functions_3D
     use Element_Utilities, only: dNdxi => shape_function_derivatives_3D
     use Element_Utilities, only: dNdx => shape_function_spatial_derivatives_3D
+    use Element_Utilities, only:  dNbardx => vol_avg_shape_function_derivatives_3D
     use Element_Utilities, only : xi => integrationpoints_3D, w => integrationweights_3D
     use Element_Utilities, only : dxdxi => jacobian_3D
     use Element_Utilities, only : initialize_integration_points
@@ -307,7 +304,7 @@ subroutine fieldvars_linelast_3dbasic(lmn, element_identifier, n_nodes, node_pro
     ! Local Variables
     logical      :: strcmp
   
-    integer      :: n_points,kint,k
+    integer      :: n_points,kint,k,i
 
     real (prec)  ::  strain(6), dstrain(6)             ! Strain vector contains [e11, e22, e33, 2e12, 2e13, 2e23]
     real (prec)  ::  stress(6)                         ! Stress vector contains [s11, s22, s33, s12, s13, s23]
@@ -316,13 +313,15 @@ subroutine fieldvars_linelast_3dbasic(lmn, element_identifier, n_nodes, node_pro
     real (prec)  ::  B(6,length_dof_array)             ! strain = B*(dof_total+dof_increment)
     real (prec)  ::  dxidx(3,3), determinant           ! Jacobian inverse and determinant
     real (prec)  ::  x(3,length_coord_array/3)         ! Re-shaped coordinate array x(i,a) is ith coord of ath node
-    real (prec)  :: E, xnu, D44, D11, D12              ! Material properties
     real (prec)  :: p, smises                          ! Pressure and Mises stress
+    real (prec)  ::  el_vol
     !
     !     Subroutine to compute element contribution to project element integration point data to nodes
 
-    !     element_properties(1)         Young's modulus
-    !     element_properties(2)         Poisson's ratio
+    !     EPROP(1)         Young's modulus
+    !     EPROP(2)         Poisson's ratio
+    !     EPROP(3)         Thermal expansion coefficient
+
 
     x = reshape(element_coords,(/3,length_coord_array/3/))
 
@@ -333,22 +332,21 @@ subroutine fieldvars_linelast_3dbasic(lmn, element_identifier, n_nodes, node_pro
 
     call initialize_integration_points(n_points, n_nodes, xi, w)
 
+    !   Volume averaged element variables
+    dNbardx = 0.d0
+    el_vol = 0.d0
+    do kint = 1,n_points
+        call calculate_shapefunctions(xi(1:3,kint),n_nodes,N,dNdxi)
+        dxdxi = matmul(x(1:3,1:n_nodes),dNdxi(1:n_nodes,1:3))
+        call invert_small(dxdxi,dxidx,determinant)
+        dNdx(1:n_nodes,1:3) = matmul(dNdxi(1:n_nodes,1:3),dxidx)
+        dNbardx = dNbardx + dNdx*w(kint)*determinant
+        el_vol = el_vol + w(kint)*determinant
+    end do
+    dNbardx = dNbardx/el_vol
+
     nodal_fieldvariables = 0.d0
-	
-    D = 0.d0
-    E = element_properties(1)
-    xnu = element_properties(2)
-    d44 = 0.5D0*E/(1+xnu) 
-    d11 = (1.D0-xnu)*E/( (1+xnu)*(1-2.D0*xnu) )
-    d12 = xnu*E/( (1+xnu)*(1-2.D0*xnu) )
-    D(1:3,1:3) = d12
-    D(1,1) = d11
-    D(2,2) = d11
-    D(3,3) = d11
-    D(4,4) = d44
-    D(5,5) = d44
-    D(6,6) = d44
-  
+
     !     --  Loop over integration points
     do kint = 1, n_points
         call calculate_shapefunctions(xi(1:3,kint),n_nodes,N,dNdxi)
@@ -366,14 +364,20 @@ subroutine fieldvars_linelast_3dbasic(lmn, element_identifier, n_nodes, node_pro
         B(6,2:3*n_nodes-1:3) = dNdx(1:n_nodes,3)
         B(6,3:3*n_nodes:3)   = dNdx(1:n_nodes,2)
 
+        do i = 1,3
+            B(i,1:3*n_nodes-2:3) = B(i,1:3*n_nodes-2:3) +(dNbardx(1:n_nodes,1)-dNdx(1:n_nodes,1))/3.d0
+            B(i,2:3*n_nodes-1:3) = B(i,2:3*n_nodes-1:3)+(dNbardx(1:n_nodes,2)-dNdx(1:n_nodes,2))/3.d0
+            B(i,3:3*n_nodes:3)   = B(i,3:3*n_nodes:3)  +(dNbardx(1:n_nodes,3)-dNdx(1:n_nodes,3))/3.d0
+        end do
+
         strain = matmul(B,dof_total)
         dstrain = matmul(B,dof_increment)
-        stress = matmul(D,strain+dstrain)
+        call hypoelastic_material(element_properties,n_properties,strain,dstrain,stress,D)
+
         p = sum(stress(1:3))/3.d0
         sdev = stress
         sdev(1:3) = sdev(1:3)-p
         smises = dsqrt( dot_product(sdev(1:3),sdev(1:3)) + 2.d0*dot_product(sdev(4:6),sdev(4:6)) )*dsqrt(1.5d0)
-        ! In the code below the strcmp( string1, string2, nchar) function returns true if the first nchar characters in strings match
         do k = 1,n_field_variables
             if (strcmp(field_variable_names(k),'S11',3) ) then
                 nodal_fieldvariables(k,1:n_nodes) = nodal_fieldvariables(k,1:n_nodes) + stress(1)*N(1:n_nodes)*determinant*w(kint)
@@ -395,5 +399,66 @@ subroutine fieldvars_linelast_3dbasic(lmn, element_identifier, n_nodes, node_pro
     end do
   
     return
-end subroutine fieldvars_linelast_3dbasic
+end subroutine fieldvars_hypoelastic_3d
+
+subroutine hypoelastic_material(element_properties,n_properties,strain,dstrain,stress,D)
+    use Types
+    use ParamIO
+
+    implicit none
+
+   integer, intent( in )      :: n_properties                                           ! # properties for the element
+   real (prec), intent( in )  ::  element_properties(n_properties)
+   real (prec), intent( in )  ::  strain(6), dstrain(6)             ! Strain vector contains [e11, e22, e33, 2e12, 2e13, 2e23]
+   real (prec), intent( out ) ::  stress(6)                         ! Stress vector contains [s11, s22, s33, s12, s13, s23]
+   real (prec), intent( out ) ::  D(6,6)                            ! stress = D*(strain+dstrain)
+
+   real (prec) :: edev(6)
+   real (prec) :: evol
+   real (prec) :: se,ee
+   real (prec) :: s0,e0,n,K,dsedee,Et,Es
+
+   integer :: j
+
+
+   s0 = element_properties(1)
+   e0 = element_properties(2)
+   n = element_properties(3)
+   K = element_properties(4)
+
+   evol = sum(strain(1:3)+dstrain(1:3))
+   edev(1:3) = strain(1:3)+dstrain(1:3) - evol/3.d0
+   edev(4:6) = 0.5d0*(strain(4:6)+dstrain(4:6))
+
+   ee = dsqrt(dot_product(edev(1:3),edev(1:3)) + 2.d0*dot_product(edev(4:6),edev(4:6)))/dsqrt(1.5d0)
+
+   D = 0.d0
+   if (ee<e0) then
+      se = s0*( dsqrt( (1.d0+n*n)/((n-1.d0)*(n-1.d0)) - (n/(n-1.d0) - ee/e0)**2.d0 ) - 1.d0/(n-1.d0) )
+      dsedee = (s0/e0)*(n/(n-1.d0) - ee/e0)/dsqrt( (1.d0+n*n)/((n-1.d0)*(n-1.d0)) - (n/(n-1.d0) - ee/e0)**2.d0 )
+      if (ee==0.d0) then
+         stress = 0.d0
+         Es = n*s0/e0
+      else
+         Es = se/ee
+         Et = dsedee
+         stress = 2.d0*se*edev/(3.d0*ee)
+         stress(1:3) = stress(1:3) + K*evol
+         D = 4.d0*(Et-Es)*spread(edev,dim=2,ncopies=6)*spread(edev,dim=1,ncopies=6)/(9.d0*ee*ee)
+      endif
+   else
+      se = s0*(ee/e0)**(1.d0/n)
+      stress = 2.d0*se*edev/(3.d0*ee)
+      stress(1:3) = stress(1:3) + K*evol
+      Et = se/(n*ee)
+      Es = se/ee
+      D = 4.d0*(Et-Es)*spread(edev,dim=2,ncopies=6)*spread(edev,dim=1,ncopies=6)/(9.d0*ee*ee)
+   endif
+   forall(j=1:3) D(j,j) = D(j,j) + 2.d0*Es/3.d0
+   forall(j=4:6) D(j,j) = D(j,j) + Es/3.d0
+   D(1:3,1:3) =  D(1:3,1:3) + (K-2.d0*Es/9.d0)
+
+   return
+
+end subroutine hypoelastic_material
 

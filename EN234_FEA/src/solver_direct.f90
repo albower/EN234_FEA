@@ -1,4 +1,4 @@
- !  
+!
 !  Routines for solution by LU decomposition with skyline storage
 !
 !====================Subroutine ASSTIF ======================

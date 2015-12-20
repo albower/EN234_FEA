@@ -55,8 +55,15 @@ subroutine user_element_static(lmn, element_identifier, n_nodes, node_property_l
 
     updated_state_variables = initial_state_variables
 
+    if ( element_identifier == 101 ) then              ! Basic fully integrated 3D linear elastic element
 
-    if ( element_identifier == 1001 ) then              ! Basic fully integrated 3D linear elastic element
+        call el_linelast_2dbasic(lmn, element_identifier, n_nodes, node_property_list, &           ! Input variables
+    n_properties, element_properties, element_coords, length_coord_array, &                      ! Input variables
+    dof_increment, dof_total, length_dof_array, &                                                ! Input variables
+    n_state_variables, initial_state_variables, &                                                ! Input variables
+    updated_state_variables,element_stiffness,element_residual, fail)      ! Output variables
+
+    else if ( element_identifier == 1001 ) then              ! Basic fully integrated 3D linear elastic element
 
         call el_linelast_3dbasic(lmn, element_identifier, n_nodes, node_property_list, &           ! Input variables
     n_properties, element_properties, element_coords, length_coord_array, &                      ! Input variables
@@ -64,6 +71,55 @@ subroutine user_element_static(lmn, element_identifier, n_nodes, node_property_l
     n_state_variables, initial_state_variables, &                                                ! Input variables
     updated_state_variables,element_stiffness,element_residual, fail)      ! Output variables
 
+   else if ( element_identifier == 2001 ) then              ! Cyclic plasticity element
+
+        call el_cyclicplast_3dbasic(lmn, element_identifier, n_nodes, node_property_list, &           ! Input variables
+    n_properties, element_properties, element_coords, length_coord_array, &                      ! Input variables
+    dof_increment, dof_total, length_dof_array, &                                                ! Input variables
+    n_state_variables, initial_state_variables, &                                                ! Input variables
+    updated_state_variables,element_stiffness,element_residual, fail)      ! Output variables
+
+   else if ( element_identifier == 4001 ) then              ! Hypoelastic element
+
+        call el_hypoelastic_3d(lmn, element_identifier, n_nodes, node_property_list, &           ! Input variables
+    n_properties, element_properties, element_coords, length_coord_array, &                      ! Input variables
+    dof_increment, dof_total, length_dof_array, &                                                ! Input variables
+    n_state_variables, initial_state_variables, &                                                ! Input variables
+    updated_state_variables,element_stiffness,element_residual, fail)      ! Output variables
+  
+    else if ( element_identifier == 1002 ) then              ! Bbar hyperelastic element
+
+        call bbar_hyperelastic(lmn, element_identifier, n_nodes, node_property_list, &           ! Input variables
+    n_properties, element_properties, element_coords, length_coord_array, &                      ! Input variables
+    dof_increment, dof_total, length_dof_array, &                                                ! Input variables
+    n_state_variables, initial_state_variables, &                                                ! Input variables
+    updated_state_variables,element_stiffness,element_residual, fail)      ! Output variables
+
+    else if ( element_identifier == 500) then            ! Element for 1D Cahn-Hilliard equation
+
+        call cahn_hilliard_element(lmn, element_identifier, n_nodes, node_property_list, &           ! Input variables
+    n_properties, element_properties, element_coords, length_coord_array, &                      ! Input variables
+    dof_increment, dof_total, length_dof_array, &                                                ! Input variables
+    n_state_variables, initial_state_variables, &                                                ! Input variables
+    updated_state_variables,element_stiffness,element_residual, fail)      ! Output variables
+
+   else if ( element_identifier == 600) then            ! Element for 2D Cahn-Hilliard equation
+
+        call cahn_hilliard_2d(lmn, element_identifier, n_nodes, node_property_list, &           ! Input variables
+    n_properties, element_properties, element_coords, length_coord_array, &                      ! Input variables
+    dof_increment, dof_total, length_dof_array, &                                                ! Input variables
+    n_state_variables, initial_state_variables, &                                                ! Input variables
+    updated_state_variables,element_stiffness,element_residual, fail)      ! Output variables
+
+
+
+    else if ( element_identifier == 400) then            ! Element for Butler_Volmer equation
+
+        call butler_volmer_element(lmn, element_identifier, n_nodes, node_property_list, &           ! Input variables
+    n_properties, element_properties, element_coords, length_coord_array, &                      ! Input variables
+    dof_increment, dof_total, length_dof_array, &                                                ! Input variables
+    n_state_variables, initial_state_variables, &                                                ! Input variables
+    updated_state_variables,element_stiffness,element_residual, fail)      ! Output variables
 
     else if ( element_identifier ==0) then           ! Stub for a new element
   
@@ -72,6 +128,7 @@ subroutine user_element_static(lmn, element_identifier, n_nodes, node_property_l
     dof_increment, dof_total, length_dof_array, &                                                ! Input variables
     n_state_variables, initial_state_variables, &                                                ! Input variables
     updated_state_variables,element_stiffness,element_residual, fail)      ! Output variables
+  
   
   
     else
@@ -147,7 +204,15 @@ subroutine user_element_dynamic(lmn, element_identifier, n_nodes, node_property_
             n_state_variables, initial_state_variables, &                                                  ! Input variables
             updated_state_variables,element_residual,element_deleted)                                      ! Output variables
 
+    else if ( element_identifier == 3001 ) then              ! Gurson dynamic plasticity element
 
+        call gurson_dynamic(lmn, element_identifier, n_nodes, node_property_list, &           ! Input variables
+            n_properties, element_properties,element_coords, length_coord_array, &                         ! Input variables
+            dof_increment, dof_total, length_dof_array,  &                                                 ! Input variables
+            n_state_variables, initial_state_variables, &                                                  ! Input variables
+            updated_state_variables,element_residual,element_deleted)                                      ! Output variables
+
+  
     else if ( element_identifier ==0) then               ! Stub for a new element
   
         call new_user_element_dynamic(lmn, element_identifier, n_nodes, node_property_list, &           ! Input variables
@@ -214,8 +279,16 @@ subroutine user_element_fieldvariables(lmn, element_identifier, n_nodes, node_pr
     real( prec ), intent( out )   :: nodal_fieldvariables(n_field_variables,n_nodes)        ! Element stiffness (ROW,COLUMN)
 
 
+     if ( element_identifier == 101 ) then              ! Basic fully integrated 3D linear elastic element
 
-    if ( element_identifier == 1001 ) then              ! Basic fully integrated 3D linear elastic element
+        call fieldvars_linelast_2dbasic(lmn, element_identifier, n_nodes, node_property_list, &         ! Input variables
+            n_properties, element_properties,element_coords, length_coord_array, &                      ! Input variables
+            dof_increment, dof_total, length_dof_array,  &                                              ! Input variables
+            n_state_variables, initial_state_variables,updated_state_variables, &                       ! Input variables
+            n_field_variables,field_variable_names, &                                                   ! Field variable definition
+            nodal_fieldvariables)      ! Output variables
+
+    else if ( element_identifier == 1001 ) then              ! Basic fully integrated 3D linear elastic element
 
         call fieldvars_linelast_3dbasic(lmn, element_identifier, n_nodes, node_property_list, &         ! Input variables
             n_properties, element_properties,element_coords, length_coord_array,  &                     ! Input variables
@@ -224,18 +297,61 @@ subroutine user_element_fieldvariables(lmn, element_identifier, n_nodes, node_pr
             n_field_variables,field_variable_names, &                                                   ! Field variable definition
             nodal_fieldvariables)      ! Output variables
 
-        else if ( element_identifier == 0 ) then
-            call new_user_element_fieldvariables(lmn, element_identifier, n_nodes, node_property_list, &           ! Input variables
-                n_properties, element_properties,element_coords, length_coord_array, &                                   ! Input variables
-                dof_increment, dof_total, length_dof_array, &                                                            ! Input variables
-                n_state_variables, initial_state_variables,updated_state_variables, &                                    ! Input variables
-                n_field_variables,field_variable_names, &                                                                ! Field variable definition
-                nodal_fieldvariables)      ! Output variables
+  
+    else  if ( element_identifier == 1002 ) then              ! Stub for a new element
 
-        else
+        call bbar_hyperelastic_fieldvariables(lmn, element_identifier, n_nodes, node_property_list, &         ! Input variables
+            n_properties, element_properties,element_coords, length_coord_array,  &                     ! Input variables
+            dof_increment, dof_total, length_dof_array,  &                                              ! Input variables
+            n_state_variables, initial_state_variables,updated_state_variables, &                       ! Input variables
+            n_field_variables,field_variable_names, &                                                   ! Field variable definition
+            nodal_fieldvariables)      ! Output variables
+
+
+   else if ( element_identifier == 2001 ) then              ! Small strain cyclic plasticity element
+
+        call fieldvars_cyclicplast_3dbasic(lmn, element_identifier, n_nodes, node_property_list, &         ! Input variables
+            n_properties, element_properties,element_coords, length_coord_array,  &                     ! Input variables
+            dof_increment, dof_total, length_dof_array,  &                                              ! Input variables
+            n_state_variables, initial_state_variables,updated_state_variables, &                       ! Input variables
+            n_field_variables,field_variable_names, &                                                   ! Field variable definition
+            nodal_fieldvariables)      ! Output variables
+
+
+   else if ( element_identifier == 3001 ) then              ! Small strain cyclic plasticity element
+
+        call dynamic_gurson_fieldvariables(lmn, element_identifier, n_nodes, node_property_list, &         ! Input variables
+            n_properties, element_properties,element_coords, length_coord_array,  &                     ! Input variables
+            dof_increment, dof_total, length_dof_array,  &                                              ! Input variables
+            n_state_variables, initial_state_variables,updated_state_variables, &                       ! Input variables
+            n_field_variables,field_variable_names, &                                                   ! Field variable definition
+            nodal_fieldvariables)      ! Output variables
+
+  else if ( element_identifier == 4001 ) then              ! Hypoelastic element
+
+        call fieldvars_hypoelastic_3d(lmn, element_identifier, n_nodes, node_property_list, &         ! Input variables
+            n_properties, element_properties,element_coords, length_coord_array,  &                     ! Input variables
+            dof_increment, dof_total, length_dof_array,  &                                              ! Input variables
+            n_state_variables, initial_state_variables,updated_state_variables, &                       ! Input variables
+            n_field_variables,field_variable_names, &                                                   ! Field variable definition
+            nodal_fieldvariables)      ! Output variables
+
+
+
+
+    else  if ( element_identifier == 0 ) then              ! Stub for a new element
+
+        call new_user_element_fieldvariables(lmn, element_identifier, n_nodes, node_property_list, &         ! Input variables
+            n_properties, element_properties,element_coords, length_coord_array,   &                    ! Input variables
+            dof_increment, dof_total, length_dof_array,  &                                              ! Input variables
+            n_state_variables, initial_state_variables,updated_state_variables, &                       ! Input variables
+            n_field_variables,field_variable_names, &                                                   ! Field variable definition
+            nodal_fieldvariables)      ! Output variables
+ 
+    else
 
         write (IOW, 99001) element_identifier
-        stop
+    stop
 
 99001 format ( // ' **** ERROR DETECTED IN SUBROUTINE user_element_fieldvariables ****'/  &
         '   Invalid element type was specified '/, &
