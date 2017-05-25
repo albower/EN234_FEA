@@ -5,10 +5,12 @@
 subroutine assemble_direct_stiffness(fail)
     use Types
     use ParamIO
+    use Globals, only: TIME,DTIME
     use User_Subroutine_Storage
     use Mesh
     use Boundaryconditions
     use Stiffness
+    use Staticstepparameters, only: current_step_number, max_total_time
     implicit none
 
     logical, intent(out) :: fail
@@ -26,6 +28,8 @@ subroutine assemble_direct_stiffness(fail)
                                                             
     real( prec ), allocatable   :: element_stiffness(:,:)
     real( prec ), allocatable   :: element_residual(:)
+
+    real( prec ), allocatable   :: element_state_vars(:)
   
     real( prec ) :: diagnorm, lmult
 
@@ -39,6 +43,7 @@ subroutine assemble_direct_stiffness(fail)
     allocate(local_nodes(length_node_array), stat = status)
     allocate(element_stiffness(length_dof_array,length_dof_array), stat = status)
     allocate(element_residual(length_dof_array), stat = status)
+    allocate(element_state_vars(length_state_variable_array), stat = status)
   
     if (status/=0) then
         write(IOW,*) ' Error in subroutine assemble_direct_stiffness '
@@ -87,7 +92,6 @@ subroutine assemble_direct_stiffness(fail)
             element_coords(1:ix),ix,element_dof_increment(1:iu), element_dof_total(1:iu),iu,      &                              ! Input variables
             ns, initial_state_variables(iof:iof+ns-1), &                                                  ! Input variables
             updated_state_variables(iof:iof+ns),element_stiffness(1:iu,1:iu),element_residual(1:iu), fail)                 ! Output variables
-      
 
         if (fail) return
 
