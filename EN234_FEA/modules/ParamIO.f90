@@ -17,7 +17,7 @@ module ParamIO
   integer :: nstr                               ! No. strings parsed
   character ( len = 100 ) :: strin
   character ( len = 100 ) :: strpar(100)
-  integer :: ityp(100), lenstr(100)  
+  integer :: ityp(100), lenstr(100)
 
   character ( len = 100 ) :: infil, outfil
   

@@ -40,6 +40,7 @@ subroutine traction_boundarycondition_static(flag,ndims,ndof,nfacenodes,element_
    ! Routine to compute contribution to element residual from distributed force applied to a solid element face
    
 
+
    element_residual = 0.D0
    element_stiffness = 0.d0
 
@@ -86,11 +87,11 @@ subroutine traction_boundarycondition_static(flag,ndims,ndof,nfacenodes,element_
           end do
         else      ! Applied normal to element face
           element_residual(1:3*nfacenodes-2:3) = &
-                          element_residual(1:3*nfacenodes-2:3) + N2(1:nfacenodes)*traction(1)*norm(1)*w2(kint)      ! Note determinant is already in normal
+                          element_residual(1:3*nfacenodes-2:3) - N2(1:nfacenodes)*traction(1)*norm(1)*w2(kint)      ! Note determinant is already in normal
           element_residual(2:3*nfacenodes-1:3) = &
-                          element_residual(2:3*nfacenodes-1:3) - N2(1:nfacenodes)*traction(2)*norm(2)*w2(kint)
+                          element_residual(2:3*nfacenodes-1:3) - N2(1:nfacenodes)*traction(1)*norm(2)*w2(kint)
           element_residual(3:3*nfacenodes:3) = &
-                           element_residual(3:3*nfacenodes:3) - N2(1:nfacenodes)*traction(3)*norm(3)*w2(kint)
+                           element_residual(3:3*nfacenodes:3) - N2(1:nfacenodes)*traction(1)*norm(3)*w2(kint)
         endif
      end do
    endif

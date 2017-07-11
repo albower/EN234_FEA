@@ -1,11 +1,14 @@
 subroutine assemble_conjugate_gradient_stiffness(fail)
     use Types
     use ParamIO
+    use Globals
     use User_Subroutine_Storage
     use Mesh
     use Boundaryconditions, only: nodeset,nodeset_list, node_lists
     use Boundaryconditions, only: n_constraints,constraint,constraint_list
     use Boundaryconditions, only: constraint_parameters, constraintparameter_list,lagrange_multipliers
+    use Staticstepparameters, only : nonlinear,current_step_number,max_total_time,abq_PNEWDT
+    use Controlparameters, only : abaqusformat
     use Stiffness
     implicit none
 
@@ -24,25 +27,50 @@ subroutine assemble_conjugate_gradient_stiffness(fail)
     integer      :: dof1,iof1,dof2,iof2
     integer      :: ipar,npar,idof
     real (prec)  :: lmult
-
+    integer      :: abq_JTYPE
+    integer      :: abq_MDLOAD
+    integer      :: abq_NPREDF
+    integer      :: abq_LFLAGS(5)
 
     real( prec ), allocatable    :: element_coords(:)
     real( prec ), allocatable    :: element_dof_increment(:)
     real( prec ), allocatable    :: element_dof_total(:)
-                                                            
+    real( prec ), allocatable    :: element_state_variables(:)
+
+    real( prec ), allocatable    :: abq_PREDEF(:,:,:)
+    real( prec ), allocatable    :: abq_ADLMAG(:)
+    real( prec ), allocatable    :: abq_DDLMAG(:)
+    real( prec ), allocatable    :: abq_V(:)
+    real( prec ), allocatable    :: abq_A(:)
+
     real( prec ), allocatable   :: element_stiffness(:,:)
     real( prec ), allocatable   :: element_residual(:)
+
+    integer, allocatable :: abq_JDLTYP(:)
   
+    real( prec ) :: abq_time(2)      ! Time variable for ABAQUS UEL interface
+    real( prec ) :: abq_PARAMS(3)    ! Parameter variable for ABAQUS UEL interface
+    real( prec ) :: element_PNEWDT   ! ABAQUS time increment control parameter
+
     type (node), allocatable ::  local_nodes(:)
 
     !     Subroutine to assemble global stiffness matrix
 
-    allocate(element_coords(length_coord_array), stat = status)
+
+    if (abaqusformat) then
+        call generate_abaqus_dloads           ! Generate_abaqus_dloads is in solver_direct.f90
+    endif
+
+    j = length_coord_array
+    if (abaqusformat) j = max(length_coord_array,length_dof_array)
+
+    allocate(element_coords(j), stat = status)
     allocate(element_dof_increment(length_dof_array), stat = status)
     allocate(element_dof_total(length_dof_array), stat = status)
     allocate(local_nodes(length_node_array), stat = status)
     allocate(element_stiffness(length_dof_array,length_dof_array), stat = status)
     allocate(element_residual(length_dof_array), stat = status)
+    allocate(element_state_variables(length_state_variable_array), stat=status)
   
     if (status/=0) then
         write(IOW,*) ' Error in subroutine assemble_direct_stiffness '
@@ -50,6 +78,25 @@ subroutine assemble_conjugate_gradient_stiffness(fail)
         stop
     endif
 
+    if (abaqusformat) then
+        allocate(abq_PREDEF(2,1,length_node_array), stat = status)
+        allocate(abq_V(length_dof_array), stat=status)
+        allocate(abq_A(length_dof_array), stat=status)
+    endif
+
+    if (length_abq_dlmag_array>0) then
+        allocate(abq_ADLMAG(length_abq_dlmag_array), stat = status)
+        allocate(abq_DDLMAG(length_abq_dlmag_array), stat = status)
+        allocate(abq_JDLTYP(length_abq_dlmag_array), stat = status)
+    endif
+    if (status/=0) then
+        write(IOW,*) ' Error in subroutine assemble_direct_stiffness '
+        write(IOW,*) ' Unable to allocate memory for user subroutines '
+        stop
+    endif
+
+    element_stiffness = 0.d0
+    element_residual = 0.d0
 
     aupp = 0.d0             ! Upper triangle of stiffness
     if (unsymmetric_stiffness) alow = 0.d0    ! Lower triangle of stiffness
@@ -63,6 +110,8 @@ subroutine assemble_conjugate_gradient_stiffness(fail)
     equation_adjacency(1:length_equation_adjacency)%n_entries = 0
     equation_adjacency(1:length_equation_adjacency)%next = 0
  
+    abq_PNEWDT = 1.d0               ! ABAQUS timestep cutback deactivated
+
     do lmn = 1, n_elements
 
           !     Extract local coords, DOF for the element
@@ -90,16 +139,90 @@ subroutine assemble_conjugate_gradient_stiffness(fail)
         ns = element_list(lmn)%n_states
         if (ns==0) ns=1
 
-        call user_element_static(lmn, element_list(lmn)%flag, element_list(lmn)%n_nodes, &                               ! Input variables
-             local_nodes(1:element_list(lmn)%n_nodes), &                                                                 ! Input variables
-            element_list(lmn)%n_element_properties, element_properties(element_list(lmn)%element_property_index),  &     ! Input variables
-            element_coords(1:ix),ix, element_dof_increment(1:iu), element_dof_total(1:iu),iu,      &                     ! Input variables
-            ns, initial_state_variables(iof:iof+ns-1), &                                                                 ! Input variables
-            updated_state_variables(iof:iof+ns),element_stiffness(1:iu,1:iu),element_residual(1:iu), fail)      ! Output variables
+        if (element_list(lmn)%flag>99999) then                ! ABAQUS UEL format user subroutine
+            !
+            abq_V = 0.d0
+            abq_A = 0.d0
+            abq_time(1:2) = TIME
+            abq_JTYPE = element_list(lmn)%flag-99999
+
+            abq_LFLAGS = 0
+            if (nonlinear) abq_LFLAGS(2) = 1
+            abq_LFLAGS(3) = 1
+
+            !           Change storage of element coords to ABAQUS UEL format
+            if (abq_MCRD(lmn) == 0) then
+                do j = 1,element_list(lmn)%n_nodes
+                    if (local_nodes(j)%n_coords >abq_MCRD(lmn)) then
+                        abq_MCRD(lmn) = local_nodes(j)%n_coords
+                    endif
+                    if (local_nodes(j)%n_dof>abq_MCRD(lmn)) then
+                        abq_MCRD(lmn) = node_list(n)%n_dof
+                        if (abq_MCRD(lmn)>3) abq_MCRD(lmn) = 3
+                    endif
+                end do
+            endif
+            ix = 0
+            do j = 1, element_list(lmn)%n_nodes
+                n = connectivity(element_list(lmn)%connect_index + j - 1)
+                do k = 1, node_list(n)%n_coords
+                    ix = ix + 1
+                    element_coords(ix) = coords(node_list(n)%coord_index + k - 1)
+                end do
+                if (node_list(n)%n_coords<abq_MCRD(lmn)) ix = ix + abq_MCRD(lmn)-node_list(n)%n_coords
+            end do
+
+            abq_PARAMS = 0
+
+            abq_MDLOAD = abq_uel_bc_list(lmn)%mdload
+            if (abq_MDLOAD>0) then
+                abq_ADLMAG(1:abq_MDLOAD) = &
+                    abq_uel_bc_mag(abq_uel_bc_list(lmn)%mag_index:abq_uel_bc_list(lmn)%mag_index+abq_MDLOAD-1)
+                abq_JDLTYP(1:abq_MDLOAD) = &
+                    abq_uel_bc_typ(abq_uel_bc_list(lmn)%mag_index:abq_uel_bc_list(lmn)%mag_index+abq_MDLOAD-1)
+                abq_DDLMAG(1:abq_MDLOAD) = &
+                    abq_uel_bc_dmag(abq_uel_bc_list(lmn)%mag_index:abq_uel_bc_list(lmn)%mag_index+abq_MDLOAD-1)
+            endif
+
+            abq_PREDEF(1,1,1:element_list(lmn)%n_nodes) = BTEMP+BTINC
+            abq_PREDEF(2,1,1:element_list(lmn)%n_nodes) = BTINC
+            abq_NPREDF = 1
+
+            element_PNEWDT = 100.d0
+            fail = .false.
+
+            element_state_variables(1:ns) = initial_state_variables(iof:iof+ns-1)
+
+            call UEL(element_residual(1:iu),element_stiffness(1:iu,1:iu),element_state_variables(1:ns), &
+                energy(8*lmn-7:8*lmn),iu,1,ns, &
+                element_properties(element_list(lmn)%element_property_index),element_list(lmn)%n_element_properties, &
+                element_coords(1:ix),abq_MCRD(lmn),element_list(lmn)%n_nodes,element_dof_increment(1:iu)+element_dof_total(1:iu), &
+                element_dof_increment(1:iu),abq_V(1:iu),abq_A(1:iu),abq_JTYPE,abq_time,DTIME, &
+                1,current_step_number,lmn,abq_PARAMS,abq_MDLOAD,abq_JDLTYP,abq_ADLMAG, &
+                abq_PREDEF(1,1,1:element_list(lmn)%n_nodes),abq_NPREDF, &
+                abq_LFLAGS,iu,abq_DDLMAG,abq_MDLOAD,element_PNEWDT, &
+                int_element_properties(element_list(lmn)%int_element_property_index),element_list(lmn)%n_int_element_properties, &
+                max_total_time)
+
+            if (element_PNEWDT < abq_PNEWDT) then
+                abq_PNEWDT = element_PNEWDT
+            endif
+
+            updated_state_variables(iof:iof+ns-1) = element_state_variables(1:ns)
+
+        else
+
+            call user_element_static(lmn, element_list(lmn)%flag, element_list(lmn)%n_nodes, &                               ! Input variables
+                local_nodes(1:element_list(lmn)%n_nodes), &                                                                 ! Input variables
+                element_list(lmn)%n_element_properties, element_properties(element_list(lmn)%element_property_index),  &     ! Input variables
+                element_list(lmn)%n_int_element_properties,int_element_properties(element_list(lmn)%int_element_property_index), & ! Input variables
+                element_coords(1:ix),ix, element_dof_increment(1:iu), element_dof_total(1:iu),iu,      &                     ! Input variables
+                ns, initial_state_variables(iof:iof+ns-1), &                                                                 ! Input variables
+                updated_state_variables(iof:iof+ns),element_stiffness(1:iu,1:iu),element_residual(1:iu), fail)      ! Output variables
       
 
-        if (fail) return
-
+            if (fail) return
+        endif
         !     --   Add element stiffness and residual to global array
 
         nsr = 0
@@ -191,7 +314,7 @@ subroutine assemble_conjugate_gradient_stiffness(fail)
             npar = constraintparameter_list(constraint_list(nc)%index_parameters)%n_parameters
             idof = constraint_list(nc)%node2                                 ! Index of node set containing DOF list
             lmult = lagrange_multipliers(nc)
-!
+            !
             call user_constraint(nc, constraint_list(nc)%flag, nodeset_list(nset)%n_nodes,&    ! Input variables
                 local_nodes(1:nodeset_list(nset)%n_nodes), node_lists(idof:idof+nnodes-1),&    ! Input variables
                 npar, constraint_parameters(ipar:ipar+npar-1), &                               ! Input variables
@@ -275,7 +398,13 @@ subroutine assemble_conjugate_gradient_stiffness(fail)
     deallocate(element_dof_total)
     deallocate(element_stiffness)
     deallocate(element_residual)
-  
+
+    if (allocated(abq_PREDEF)) deallocate(abq_PREDEF)
+    if (allocated(abq_ADLMAG)) deallocate(abq_ADLMAG)
+    if (allocated(abq_JDLTYP)) deallocate(abq_JDLTYP)
+    if (allocated(abq_uel_bc_typ)) deallocate(abq_uel_bc_typ)
+    if (allocated(abq_uel_bc_mag)) deallocate(abq_uel_bc_mag)
+    if (allocated(abq_uel_bc_dmag)) deallocate(abq_uel_bc_dmag)
 
 end subroutine assemble_conjugate_gradient_stiffness
 
@@ -343,6 +472,7 @@ subroutine apply_cojugategradient_boundaryconditions
         if (flag<4) then
             do k  = 1, nel
                 lmn = element_lists(iof+k-1)
+                if (element_list(lmn)%flag>99999) cycle ! Skip boundary conditions on  ABAQUS UEL
                 ndims = node_list(connectivity(element_list(lmn)%connect_index))%n_coords
                 ndof = node_list(connectivity(element_list(lmn)%connect_index))%n_dof
                 traction = 0.d0
@@ -413,12 +543,14 @@ subroutine apply_cojugategradient_boundaryconditions
     
         else if (flag==4) then              ! User subroutine controlled distributed load
 
-            param_index = subroutineparameter_list(distributedload_list(load)%subroutine_parameter_number)%index
-            nparam = subroutineparameter_list(distributedload_list(load)%subroutine_parameter_number)%index
-            if (param_index==0) param_index=1
-            if (nparam==0) nparam = 1
+
             do k  = 1, nel
                 lmn = element_lists(iof+k-1)
+                if (element_list(lmn)%flag>99999) cycle ! Skip boundary conditions on  ABAQUS UEL
+                param_index = subroutineparameter_list(distributedload_list(load)%subroutine_parameter_number)%index
+                nparam = subroutineparameter_list(distributedload_list(load)%subroutine_parameter_number)%index
+                if (param_index==0) param_index=1
+                if (nparam==0) nparam = 1
                 !     Extract local coords, DOF for the element
                 ix = 0
                 iu = 0

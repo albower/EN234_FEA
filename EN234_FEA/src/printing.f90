@@ -1098,7 +1098,6 @@ subroutine assemble_projection_lumped_mass_matrix(start_element,end_element,lump
     use ParamIO
     use Element_Utilities, only : N3 => shape_functions_3D
     use Element_Utilities, only : dNdxi3 => shape_function_derivatives_3D
-    use Element_Utilities, only : dNdx3 => shape_function_spatial_derivatives_3D
     use Element_Utilities, only : xi3 => integrationpoints_3D, w3 => integrationweights_3D
     use Element_Utilities, only : dxdxi3 => jacobian_3D
     use Element_Utilities, only : N2 => shape_functions_2D
@@ -1387,8 +1386,13 @@ end subroutine assemble_projection_mass_matrix
 subroutine assemble_field_projection(start_element,end_element,n_field_variables,field_variable_names,field_variables)
     use Types
     use ParamIO
-    use User_Subroutine_Storage, only : length_coord_array, length_dof_array, length_node_array
+    use Globals
+    use User_Subroutine_Storage, only : length_coord_array, length_dof_array, length_node_array,length_state_variable_array
     use Mesh
+    use Boundaryconditions
+    use Staticstepparameters, only : current_step_number,max_total_time
+    use Controlparameters
+
     implicit none
   
     integer, intent(in)              :: start_element
@@ -1404,22 +1408,46 @@ subroutine assemble_field_projection(start_element,end_element,n_field_variables
     integer      ::  lmn, n
     integer      :: iof, ns
     integer      :: status
+    integer      :: mat_prop_index
+    integer      :: n_mat_props
+
+    integer      :: abq_JTYPE
+    integer      :: abq_NPREDF
+    integer      :: abq_NENERGY
 
     real( prec ), allocatable    :: element_coords(:)
     real( prec ), allocatable    :: element_dof_increment(:)
     real( prec ), allocatable    :: element_dof_total(:)
+    real( prec ), allocatable    :: element_state_variables(:)
+
+    real( prec ), allocatable    :: abq_PREDEF(:,:,:)
+    real( prec ), allocatable    :: abq_V(:)
+    real( prec ), allocatable    :: abq_A(:)
+
+    real( prec ) :: abq_time(2)      ! Time variable for ABAQUS UEL interface
+    real( prec ) :: abq_PARAMS(3)    ! Parameter variable for ABAQUS UEL interface
 
     type (node), allocatable     :: local_nodes(:)
   
     real (prec), allocatable ::     nodal_field_variables(:,:)
 
-    !     Subroutine to assemble global stiffness matrix
+    !     Subroutine to assemble nodal field projection vectors
 
-    allocate(element_coords(length_coord_array), stat=status)
+    j = length_coord_array
+    if (abaqusformat) j = max(length_coord_array,length_dof_array)
+
+    allocate(element_coords(j), stat = status)
     allocate(element_dof_increment(length_dof_array), stat=status)
     allocate(element_dof_total(length_dof_array), stat= status)
     allocate(local_nodes(length_node_array), stat=status)
+    allocate(element_state_variables(length_state_variable_array), stat=status)
     allocate(nodal_field_variables(n_field_variables,length_node_array), stat=status)
+
+    if (abaqusformat) then
+       allocate(abq_PREDEF(2,1,length_node_array), stat = status)
+       allocate(abq_V(length_dof_array), stat=status)
+       allocate(abq_A(length_dof_array), stat=status)
+    endif
 
     if (status /= 0) then
        write(IOW,*) ' Error in subroutine assemble_field_projection '
@@ -1454,13 +1482,165 @@ subroutine assemble_field_projection(start_element,end_element,n_field_variables
         if (iof==0) iof = 1
         ns = element_list(lmn)%n_states
 
-        call user_element_fieldvariables(lmn, element_list(lmn)%flag, element_list(lmn)%n_nodes, &
-            local_nodes(1:element_list(lmn)%n_nodes), &       ! Input variables
-            element_list(lmn)%n_element_properties, element_properties(element_list(lmn)%element_property_index),  &  ! Input variables
-            element_coords(1:ix),ix, element_dof_increment(1:iu), element_dof_total(1:iu),iu,      &                  ! Input variables
-            ns, initial_state_variables(iof:iof+ns),updated_state_variables(iof:iof+ns), &                            ! Input variables
-            n_field_variables,field_variable_names, &                                                           ! Field variable definition
-            nodal_field_variables(1:n_field_variables,1:element_list(lmn)%n_nodes))      ! Output variables
+
+        if (element_list(lmn)%flag == 10002) then                  ! 2D continuum element
+             !     Extract local coords, DOF for the element
+            ix = 0
+            iu = 0
+            do j = 1, element_list(lmn)%n_nodes
+                n = connectivity(element_list(lmn)%connect_index + j - 1)
+                local_nodes(j)%n_coords = node_list(n)%n_coords
+                local_nodes(j)%coord_index = ix+1
+                do k = 1, node_list(n)%n_coords
+                    ix = ix + 1
+                    element_coords(ix) = coords(node_list(n)%coord_index + k - 1)
+                end do
+                local_nodes(j)%n_dof = node_list(n)%n_dof
+                local_nodes(j)%dof_index = iu+1
+                do k = 1, node_list(n)%n_dof
+                    iu = iu + 1
+                    element_dof_increment(iu) = dof_increment(node_list(n)%dof_index + k - 1)
+                    element_dof_total(iu) = dof_total(node_list(n)%dof_index + k - 1)
+                end do
+            end do
+
+
+            iof = element_list(lmn)%state_index
+            if (iof==0) iof = 1
+            ns = element_list(lmn)%n_states
+            if (ns==0) ns=1
+
+            mat_prop_index = material_list(element_list(lmn)%material_index)%prop_index
+            n_mat_props = material_list(element_list(lmn)%material_index)%n_properties
+                   !     Form element contribution to nodal force vector
+            call continuum_element_fieldvariables_2D(lmn, element_list(lmn)%flag, element_list(lmn)%n_nodes, &                            ! Input variables
+                local_nodes(1:element_list(lmn)%n_nodes),material_namelist(element_list(lmn)%material_index)(1:80), &      ! Input variables
+                densities(element_list(lmn)%density_index),n_mat_props, material_properties(mat_prop_index),  &              ! Input variables
+                element_coords(1:ix),ix, element_dof_increment(1:iu), element_dof_total(1:iu),iu,      &                   ! Input variables
+                ns, initial_state_variables(iof:iof+ns-1), &                                                               ! Input variables
+                updated_state_variables(iof:iof+ns), &
+                n_field_variables,field_variable_names, &                                                           ! Field variable definition
+                nodal_field_variables(1:n_field_variables,1:element_list(lmn)%n_nodes))      ! Output variables
+
+
+        else if (element_list(lmn)%flag == 10003) then             ! 3D continuum element
+
+              !     Extract local coords, DOF for the element
+            ix = 0
+            iu = 0
+            do j = 1, element_list(lmn)%n_nodes
+                n = connectivity(element_list(lmn)%connect_index + j - 1)
+                local_nodes(j)%n_coords = node_list(n)%n_coords
+                local_nodes(j)%coord_index = ix+1
+                do k = 1, node_list(n)%n_coords
+                    ix = ix + 1
+                    element_coords(ix) = coords(node_list(n)%coord_index + k - 1)
+                end do
+                local_nodes(j)%n_dof = node_list(n)%n_dof
+                local_nodes(j)%dof_index = iu+1
+                do k = 1, node_list(n)%n_dof
+                    iu = iu + 1
+                    element_dof_increment(iu) = dof_increment(node_list(n)%dof_index + k - 1)
+                    element_dof_total(iu) = dof_total(node_list(n)%dof_index + k - 1)
+                end do
+            end do
+
+
+            iof = element_list(lmn)%state_index
+            if (iof==0) iof = 1
+            ns = element_list(lmn)%n_states
+            if (ns==0) ns=1
+
+            mat_prop_index = material_list(element_list(lmn)%material_index)%prop_index
+            n_mat_props = material_list(element_list(lmn)%material_index)%n_properties
+                   !     Form element contribution to nodal force vector
+            call continuum_element_fieldvariables_3D(lmn, element_list(lmn)%flag, element_list(lmn)%n_nodes, &                            ! Input variables
+                local_nodes(1:element_list(lmn)%n_nodes),material_namelist(element_list(lmn)%material_index)(1:80), &      ! Input variables
+                densities(element_list(lmn)%density_index),n_mat_props, material_properties(mat_prop_index),  &              ! Input variables
+                element_coords(1:ix),ix, element_dof_increment(1:iu), element_dof_total(1:iu),iu,      &                   ! Input variables
+                ns, initial_state_variables(iof:iof+ns-1), &                                                               ! Input variables
+                updated_state_variables(iof:iof+ns), &
+                n_field_variables,field_variable_names, &                                                           ! Field variable definition
+                nodal_field_variables(1:n_field_variables,1:element_list(lmn)%n_nodes))      ! Output variables
+
+
+        else if (element_list(lmn)%flag>99999) then                ! ABAQUS UEL format user subroutine
+            !
+
+            abq_time(1:2) = TIME
+            abq_JTYPE = element_list(lmn)%flag-99999
+
+            if (staticstep) then
+                abq_V = 0.d0
+                abq_A = 0.d0
+                abq_NENERGY = 8
+            else
+                iu = 0
+                do j = 1, element_list(lmn)%n_nodes
+                    n = connectivity(element_list(lmn)%connect_index + j - 1)
+                    do k = 1, node_list(n)%n_dof
+                        iu = iu + 1
+                        abq_V(iu) = velocity(node_list(n)%dof_index + k - 1)
+                        abq_A(iu) = acceleration(node_list(n)%dof_index + k - 1)
+                    end do
+                end do
+                abq_NENERGY = 12
+            endif
+
+
+            !           Change storage of element coords to ABAQUS UEL format
+            if (abq_MCRD(lmn) == 0) then
+                do j = 1,element_list(lmn)%n_nodes
+                    if (local_nodes(j)%n_coords >abq_MCRD(lmn)) then
+                        abq_MCRD(lmn) = local_nodes(j)%n_coords
+                    endif
+                    if (local_nodes(j)%n_dof>abq_MCRD(lmn)) then
+                        abq_MCRD(lmn) = node_list(n)%n_dof
+                        if (abq_MCRD(lmn)>3) abq_MCRD(lmn) = 3
+                    endif
+                end do
+            endif
+            ix = 0
+            do j = 1, element_list(lmn)%n_nodes
+                n = connectivity(element_list(lmn)%connect_index + j - 1)
+                do k = 1, node_list(n)%n_coords
+                    ix = ix + 1
+                    element_coords(ix) = coords(node_list(n)%coord_index + k - 1)
+                end do
+                if (node_list(n)%n_coords<abq_MCRD(lmn)) ix = ix + abq_MCRD(lmn)-node_list(n)%n_coords
+            end do
+
+            abq_PARAMS = 0
+
+            abq_PREDEF(1,1,1:element_list(lmn)%n_nodes) = BTEMP+BTINC
+            abq_PREDEF(2,1,1:element_list(lmn)%n_nodes) = BTINC
+            abq_NPREDF = 1
+
+            element_state_variables(1:ns) = updated_state_variables(iof:iof+ns-1)
+
+            call EN234FEA_ABAQUS_STATE_PROJECTION(staticstep,n_field_variables,field_variable_names, &                                                           ! Field variable definition
+                nodal_field_variables(1:n_field_variables,1:element_list(lmn)%n_nodes), &
+                element_state_variables(1:ns),energy(ABQ_NENERGY*(lmn-1)+1:ABQ_NENERGY*lmn),abq_NENERGY,iu,ns, &
+                element_properties(element_list(lmn)%element_property_index),element_list(lmn)%n_element_properties, &
+                element_coords(1:ix),abq_MCRD(lmn), &
+                element_list(lmn)%n_nodes,element_dof_increment(1:iu)+element_dof_total(1:iu),&
+                abq_V,abq_A,abq_JTYPE,abq_time,DTIME, &
+                1,current_step_number,lmn,abq_PARAMS,abq_PREDEF,abq_NPREDF,&
+                int_element_properties(element_list(lmn)%int_element_property_index),element_list(lmn)%n_int_element_properties, &
+                max_total_time)
+
+        else
+
+            call user_element_fieldvariables(lmn, element_list(lmn)%flag, element_list(lmn)%n_nodes, &
+                local_nodes(1:element_list(lmn)%n_nodes), &       ! Input variables
+                element_list(lmn)%n_element_properties, element_properties(element_list(lmn)%element_property_index),  &  ! Input variables
+                int_element_properties(element_list(lmn)%int_element_property_index),element_list(lmn)%n_int_element_properties, & ! Input variables
+                element_coords(1:ix),ix, element_dof_increment(1:iu), element_dof_total(1:iu),iu,      &                  ! Input variables
+                ns, initial_state_variables(iof:iof+ns),updated_state_variables(iof:iof+ns), &                            ! Input variables
+                n_field_variables,field_variable_names, &                                                           ! Field variable definition
+                nodal_field_variables(1:n_field_variables,1:element_list(lmn)%n_nodes))      ! Output variables
+
+        endif
 
         do j = 1, element_list(lmn)%n_nodes
             n = connectivity(element_list(lmn)%connect_index + j - 1)
@@ -1475,6 +1655,11 @@ subroutine assemble_field_projection(start_element,end_element,n_field_variables
     deallocate(element_dof_total)
     deallocate(local_nodes)
     deallocate(nodal_field_variables)
+
+    if (allocated(abq_PREDEF)) deallocate(abq_PREDEF)
+    if (allocated(abq_uel_bc_typ)) deallocate(abq_uel_bc_typ)
+    if (allocated(abq_uel_bc_mag)) deallocate(abq_uel_bc_mag)
+    if (allocated(abq_uel_bc_dmag)) deallocate(abq_uel_bc_dmag)
 
 
 end subroutine assemble_field_projection

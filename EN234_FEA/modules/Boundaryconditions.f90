@@ -74,6 +74,8 @@ module Boundaryconditions
         integer :: dof2                       ! Dof for second node (not used if flag=3)
         integer :: index_parameters           ! Index of parameters associated with constraint in parameter list
     end type constraint
+
+
    
     integer, save :: n_histories                   ! No. load histories
     integer, save :: n_subroutine_parameters       ! No. lists of subroutine parameters for distributed loads or DOF

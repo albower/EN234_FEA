@@ -23,51 +23,86 @@ module Mesh
       integer :: element_property_index        ! Index of first element property in element_properties(:)
       integer :: n_element_properties          ! No. element properties
       integer :: density_index                 ! Index of density value
+      integer :: int_element_property_index    ! Index of integer element properties (used for ABAQUS subroutines)
+      integer :: n_int_element_properties      ! No. integer valued element properties (used for ABAQUS subroutines)
+      integer :: material_index                ! Index of material assigned to element
    end type element
    
+   type material
+      sequence
+      integer :: prop_index                    ! Index of first material property in property array
+      integer :: n_properties                  ! No. properties for this material
+      integer :: n_states                      ! No. history dependent state variables for this material
+   end type material
+
    type zone
       sequence
       integer :: start_element                 ! First element in a zone
       integer :: end_element                   ! Last element in a zone
    end type zone
+!  Data type for storing ABAQUS UEL distributed loads
+   type abq_uel_bc
+      sequence
+      integer :: mdload                        ! Number of BCs applied to abaqus UEL
+      integer :: mag_index                     ! Index to arrays storing magnitude and type of BC applied to abaqus UEL
+   end type abq_uel_bc
+
    
    integer, save :: n_zones                          ! Number of zones
    integer, save :: n_nodes                          ! Total number of nodes
    integer, save :: n_elements                       ! Total number of elements
+   integer, save :: n_materials                      ! Total number of materials (used in ABAQUS UMAT and VUMAT)
    integer, save :: length_coords                    ! Length of coordinate array
    integer, save :: length_dofs                      ! Length of nodal DOF array
    integer, save :: length_connectivity              ! Length of connectivity array
    integer, save :: length_element_properties        ! Length of element property array
+   integer, save :: length_int_element_properties    ! Length of integer valued element property array
+   integer, save :: length_material_properties       ! Length of material property array
    integer, save :: length_densities                 ! Length of density array
    integer, save :: length_state_variables           ! Length of state variable array
    integer, save :: length_displacement_map          ! Length of array mapping nodal DOF to displacements
    integer, save :: n_mesh_parameters                ! Parameeters controlling a user-subrouine generated mesh
+   integer, save :: length_abq_dlmag_array           ! Array dimension for abaqus uel boundary conditions
+
    
-   integer, save, allocatable :: displacement_map(:) ! Array storing mapping of nodal DOF to displacements
-   integer, save, allocatable :: connectivity(:)     ! Array storing element connectivity
+   integer, save, allocatable :: displacement_map(:)       ! Array storing mapping of nodal DOF to displacements
+   integer, save, allocatable :: connectivity(:)           ! Array storing element connectivity
+   integer, save, allocatable :: int_element_properties(:) ! Array storing integer valued element properties
+
+   integer, allocatable :: abq_uel_bc_typ(:)          ! Array storing boundary condition type flags for abaqus UEL bcs
+   integer, save, allocatable :: abq_MCRD(:)                         ! Abaqus uel MCRD parameter
 
    real (prec), save :: nodal_force_norm             ! Norm of nodal generalized force
    real (prec), save :: unbalanced_force_norm        ! Norm of out-of-balance forces
    real (prec), save :: correction_norm              ! Norm of solution correction
 
    real (prec), save, allocatable :: element_properties(:)            ! List of element properties
+   real (prec), save, allocatable :: material_properties(:)           ! List of material properties
    real (prec), save, allocatable :: densities(:)                     ! List of density values for zones
    real (prec), save, allocatable :: initial_state_variables(:)       ! Element state variables at the start of a time increment
    real (prec), save, allocatable :: updated_state_variables(:)       ! Element state variables at the end of a time increment
    real (prec), save, allocatable :: coords(:)                        ! List of nodal coordinates
    real (prec), save, allocatable :: dof_total(:)                     ! List of accumulated DOF
    real (prec), save, allocatable :: dof_increment(:)                 ! List of increment in DOF
+   real (prec), save, allocatable :: energy(:)                        ! Energy (used by ABAQUS UMAT and UEL)
    real (prec), save, allocatable :: velocity(:)                      ! Velocity (for explicit dynamics)
    real (prec), save, allocatable :: acceleration(:)                  ! Acceleration (for explicit dynamics)
    real (prec), save, allocatable :: lumped_mass(:)                   ! Lumped mass matrix (for explicit dynamics)
    real (prec), save, allocatable :: rforce(:)
    real (prec), save, allocatable :: mesh_subroutine_parameters(:)    ! List of parameters controlling a user-subroutine generated mesh
    
-   type (node), save, allocatable :: node_list(:)
-   type (element), save, allocatable :: element_list(:)
-   type (zone), save, allocatable :: zone_list(:)
+
+   real (prec), save, allocatable :: abq_uel_bc_mag(:)                      ! Array storing magnitudes of BCs for abaqus UEL
+   real (prec), save, allocatable :: abq_uel_bc_dmag(:)                     ! Array storing magnitudes of increment in BCs for abaqus UEL
+
+   type (node),       save, allocatable :: node_list(:)
+   type (element),    save, allocatable :: element_list(:)
+   type (zone),       save, allocatable :: zone_list(:)
+   type (material),   save, allocatable :: material_list(:)
+   type (abq_uel_bc), save, allocatable :: abq_uel_bc_list(:)
    
    character (len=100), allocatable :: zone_namelist(:)         ! Names of zones in mesh
+   character (len=100), allocatable :: material_namelist(:)     ! Names of materials
 
    logical, save, allocatable :: element_deleted(:)             ! Flag listing deleted elements in an explicit dynamic simulation
 
@@ -106,7 +141,6 @@ contains
       n_nodes = element_list(lmn)%n_nodes
       n_state_variables = element_list(lmn)%n_states
       n_properties = element_list(lmn)%n_element_properties
-
 
       node_list(1:n_nodes) = connectivity(element_list(lmn)%connect_index:element_list(lmn)%connect_index+n_nodes-1)
       if (n_properties>0) then
@@ -151,6 +185,7 @@ contains
       flag = node_list(nn)%flag
       n_coords = node_list(nn)%n_coords
       n_dof = node_list(nn)%n_dof
+
 
       nodal_coords(1:n_coords) = coords(node_list(nn)%coord_index:node_list(nn)%coord_index+n_coords-1)
       nodal_dof_increment(1:n_dof) = dof_increment(node_list(nn)%dof_index: &
