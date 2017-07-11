@@ -3,9 +3,6 @@ program en234fea
   use ParamIO
   use Globals
   use Controlparameters
-
-
-
   implicit none
 !
 !   Homework Assignments 2017
