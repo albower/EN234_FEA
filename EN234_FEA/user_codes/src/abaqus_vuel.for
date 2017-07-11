@@ -169,7 +169,8 @@
         if (NNODE == 20) n_points = 27
         if (NNODE==0) then                                 ! Nonstandard element
             write(6,*) ' Error in abaqus VUEL '
-            write(6,*) ' Mass matrix has not been coded for element with ',NNODE,' nodes'
+            write(6,*) ' Mass matrix has not been coded for',
+     1       ' element with ',NNODE,' nodes'
             stop
         endif
         call abq_VUEL_3D_integrationpoints(n_points, NNODE, xi, w)
@@ -177,21 +178,28 @@
         do iblock = 1,nblock
 
             do kint = 1,n_points
-                call abq_VUEL_3D_shapefunctions(xi(1:3,kint),NNODE,N,dNdxi)
-                dxdxi = matmul(transpose(coords(iblock,1:NNODE,1:3)),dNdxi(1:NNODE,1:3))
-                determinant =   dxdxi(1,1)*dxdxi(2,2)*dxdxi(3,3)  &
-                              - dxdxi(1,1)*dxdxi(2,3)*dxdxi(3,2)  &
-                              - dxdxi(1,2)*dxdxi(2,1)*dxdxi(3,3)  &
-                              + dxdxi(1,2)*dxdxi(2,3)*dxdxi(3,1)  &
-                              + dxdxi(1,3)*dxdxi(2,1)*dxdxi(3,2)  &
-                              - dxdxi(1,3)*dxdxi(2,2)*dxdxi(3,1)
+                call abq_VUEL_3D_shapefunctions(xi(1:3,kint),
+     1                                              NNODE,N,dNdxi)
+                dxdxi = matmul(transpose(coords(iblock,1:NNODE,1:3)),
+     1                                              dNdxi(1:NNODE,1:3))
+                determinant =   dxdxi(1,1)*dxdxi(2,2)*dxdxi(3,3)
+     1                         - dxdxi(1,1)*dxdxi(2,3)*dxdxi(3,2)
+     2                         - dxdxi(1,2)*dxdxi(2,1)*dxdxi(3,3)
+     3                         + dxdxi(1,2)*dxdxi(2,3)*dxdxi(3,1)
+     4                         + dxdxi(1,3)*dxdxi(2,1)*dxdxi(3,2)
+     5                         - dxdxi(1,3)*dxdxi(2,2)*dxdxi(3,1)
                 !             Lumped mass matrix computed  using row sum method
                 irow = 0
                 do j = 1,NNODE
                     irow = 3*j-2
-                    amass(iblock,irow,irow) = amass(iblock,irow,irow) + N(j)*sum(N(1:NNODE))*determinant*w(kint)
-                    amass(iblock,irow+1,irow+1) = amass(iblock,irow+1,irow+1) + N(j)*sum(N(1:NNODE))*determinant*w(kint)
-                    amass(iblock,irow+2,irow+2) = amass(iblock,irow+2,irow+2) + N(j)*sum(N(1:NNODE))*determinant*w(kint)
+                    amass(iblock,irow,irow) = amass(iblock,irow,irow)
+     1                       + N(j)*sum(N(1:NNODE))*determinant*w(kint)
+                    amass(iblock,irow+1,irow+1) =
+     1                                  amass(iblock,irow+1,irow+1)
+     2                       + N(j)*sum(N(1:NNODE))*determinant*w(kint)
+                    amass(iblock,irow+2,irow+2) =
+     1                            amass(iblock,irow+2,irow+2)
+     2                       + N(j)*sum(N(1:NNODE))*determinant*w(kint)
                 end do
             end do
 
@@ -228,8 +236,10 @@
         do iblock = 1,nblock
             !     --  Loop over integration points
             do kint = 1, n_points
-                call abq_VUEL_3D_shapefunctions(xi(1:3,kint),NNODE,N,dNdxi)
-                dxdxi = matmul(transpose(coords(iblock,1:NNODE,1:3)),dNdxi(1:NNODE,1:3))
+                call abq_VUEL_3D_shapefunctions(xi(1:3,kint),
+     1                                               NNODE,N,dNdxi)
+                dxdxi = matmul(transpose(coords(iblock,1:NNODE,1:3)),
+     1                                            dNdxi(1:NNODE,1:3))
                 call abq_VUEL_invert3d(dxdxi,dxidx,determinant)
                 dNdx(1:NNODE,1:3) = matmul(dNdxi(1:NNODE,1:3),dxidx)
                 B = 0.d0
@@ -247,9 +257,12 @@
 
                 stress = matmul(D,strain)
 
-                RHS(iblock,1:3*NNODE) = RHS(iblock,1:3*NNODE) - matmul(transpose(B(1:6,1:3*NNODE)),stress(1:6))*w(kint)*determinant
+                RHS(iblock,1:3*NNODE) = RHS(iblock,1:3*NNODE)
+     1           - matmul(transpose(B(1:6,1:3*NNODE)),stress(1:6))*
+     2                                              w(kint)*determinant
 
-                ENERGY(iblock,2) = ENERGY(iblock,2) + 0.5D0*dot_product(stress,strain)*w(kint)*determinant           ! Store the elastic strain energy
+                ENERGY(iblock,2) = ENERGY(iblock,2)
+     1           + 0.5D0*dot_product(stress,strain)*w(kint)*determinant           ! Store the elastic strain energy
 
                 if (NSVARS>=n_points*6) then   ! Store stress at each integration point (if space was allocated to do so)
                     SVARS(iblock,6*kint-5:6*kint) = stress(1:6)
@@ -269,10 +282,12 @@
 
         do iblock = 1,nblock
 
-            call abq_VUEL_facenodes_3D(NNODE,iabs(JDLTYP),face_node_list,nfacenodes)
+            call abq_VUEL_facenodes_3D(NNODE,iabs(JDLTYP),
+     1                                     face_node_list,nfacenodes)
 
             do i = 1,nfacenodes
-                face_coords(1:3,i) = coords(iblock,face_node_list(i),1:3)
+                face_coords(1:3,i) =
+     1                             coords(iblock,face_node_list(i),1:3)
             end do
 
             if (nfacenodes == 3) n_points = 3
@@ -280,18 +295,26 @@
             if (nfacenodes == 4) n_points = 4
             if (nfacenodes == 8) n_points = 9
 
-            call abq_VUEL_2D_integrationpoints(n_points, nfacenodes, xi2, w)
+            call abq_VUEL_2D_integrationpoints(n_points,
+     1                                             nfacenodes, xi2, w)
 
             do kint = 1,n_points
-                call abq_VUEL_2D_shapefunctions(xi2(1:2,kint),nfacenodes,N2,dNdxi2)
-                dxdxi2 = matmul(face_coords(1:3,1:nfacenodes),dNdxi2(1:nfacenodes,1:2))
-                norm(1) = (dxdxi2(2,1)*dxdxi2(3,2))-(dxdxi2(2,2)*dxdxi2(3,1))
-                norm(2) = (dxdxi2(1,1)*dxdxi2(3,2))-(dxdxi2(1,2)*dxdxi2(3,1))
-                norm(3) = (dxdxi2(1,1)*dxdxi2(2,2))-(dxdxi2(1,2)*dxdxi2(2,1))
+                call abq_VUEL_2D_shapefunctions(xi2(1:2,kint),
+     1                                            nfacenodes,N2,dNdxi2)
+                dxdxi2 = matmul(face_coords(1:3,1:nfacenodes),
+     1                                    dNdxi2(1:nfacenodes,1:2))
+                norm(1) = (dxdxi2(2,1)*dxdxi2(3,2))
+     1                                       -(dxdxi2(2,2)*dxdxi2(3,1))
+                norm(2) = (dxdxi2(1,1)*dxdxi2(3,2))
+     1                                       -(dxdxi2(1,2)*dxdxi2(3,1))
+                norm(3) = (dxdxi2(1,1)*dxdxi2(2,2))
+     1                                        -(dxdxi2(1,2)*dxdxi2(2,1))
 
                 do i = 1,nfacenodes
                     ipoin = 3*face_node_list(i)-2
-                    RHS(iblock,ipoin:ipoin+3) = RHS(iblock,ipoin:ipoin+3) - N2(i)*adlmag(iblock)*norm(1:3)*w(kint)      ! Note determinant is already in normal
+                    RHS(iblock,ipoin:ipoin+3) =
+     1                            RHS(iblock,ipoin:ipoin+3)
+     2                        - N2(i)*adlmag(iblock)*norm(1:3)*w(kint)      ! Note determinant is already in normal
                 end do
             end do
         end do
@@ -362,7 +385,8 @@
             w(1) = -4.d0/30.d0
             w(2:5) = 3.d0/40.d0
         else
-            write(6,*) ' Incorrect number of integration points for tetrahedral element '
+            write(6,*) ' Incorrect number of integration points for',
+     1                                    ' tetrahedral element '
             write(6, *) ' called with ',n_points
             stop
         endif
@@ -937,12 +961,12 @@
 
     !   Compute inverse and determinant of 3x3 matrix
 
-      determinant =   A(1,1)*A(2,2)*A(3,3)  &
-        - A(1,1)*A(2,3)*A(3,2)  &
-        - A(1,2)*A(2,1)*A(3,3)  &
-        + A(1,2)*A(2,3)*A(3,1)  &
-        + A(1,3)*A(2,1)*A(3,2)  &
-        - A(1,3)*A(2,2)*A(3,1)
+      determinant =   A(1,1)*A(2,2)*A(3,3)
+     1   - A(1,1)*A(2,3)*A(3,2)
+     2   - A(1,2)*A(2,1)*A(3,3)
+     3   + A(1,2)*A(2,3)*A(3,1)
+     4   + A(1,3)*A(2,1)*A(3,2)
+     5   - A(1,3)*A(2,2)*A(3,1)
 
       IF (determinant==0.d0) THEN
         write(6,*) ' Error in subroutine abq_UEL_inver3d'

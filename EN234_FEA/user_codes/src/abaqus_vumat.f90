@@ -3,7 +3,7 @@
 !
 !
 
-     subroutine vumat_linear_elastic(nblock, ndir, nshr, nstatev, nfieldv, nprops, lanneal, &
+     subroutine vumat(nblock, ndir, nshr, nstatev, nfieldv, nprops, lanneal, &
        stepTime, totalTime, dt, cmname, coordMp, charLength, &
        props, density, strainInc, relSpinInc, &
        tempOld, stretchOld, defgradOld, fieldOld, &
@@ -121,4 +121,4 @@
 
 
 !
-End Subroutine vumat_linear_elastic
+End Subroutine vumat
