@@ -42,10 +42,10 @@ program en234fea
 
 !   Runs an explicit dynamic simulation of a 3D plate with a central hole with and ABAQUS VUEL
 !   This simulation will take a few minutes to run (running in release mode will speed it up)
-!   infil = './input_files/Abaqus_vuel_holeplate_3d.in'
-!   open (unit = IOR, file = infil, status = 'old', ERR=500)
-!   outfil = './Output_files/Abaqus_vuel_holeplate_3d.out'
-!   open (UNIT = IOW, FILE = outfil, STATUS = 'unknown', ERR=500)
+   infil = './input_files/Abaqus_vuel_holeplate_3d.in'
+   open (unit = IOR, file = infil, status = 'old', ERR=500)
+   outfil = './Output_files/Abaqus_vuel_holeplate_3d.out'
+   open (UNIT = IOW, FILE = outfil, STATUS = 'unknown', ERR=500)
 
 !  Tests an ABAQUS format UMAT subroutine (in abaqus_umat_elastic.for) with 2 8 noded quadrilateral elements
 !   infil = './input_files/Abaqus_umat_linear_elastic_3d.in'
