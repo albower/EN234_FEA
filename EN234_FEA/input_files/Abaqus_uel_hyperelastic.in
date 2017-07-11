@@ -1,0 +1,178 @@
+%
+%             Demonstration input file for simple general purpose FEA code EN234FEA
+%                                    A.F. Bower, August 2015
+%
+%             Input file to stretch and then rotate a hyperelastic bar, meshed with 2 elements.
+%             A user-subroutine is used to prescribe the rotation boundary condition (quite tricky)
+%
+%
+% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% MESH DEFINITION %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%
+    MESH
+
+%    The NODE command defines properties of the nodes.  
+%    The parameters are # of coords, # of DOF, and an optional integer identifier
+       NODES
+%    The parameters are # of coords, # of DOF, and an optional integer identifier
+       PARAMETERS, 3, 3, 1
+%      Specify which nodal DOF are displacements.  In the example, DOF 1 is the x displacement, 2 is the y displacement, 3 is the z displacement
+       DISPLACEMENT DOF, 1, 2, 3
+%    Enter x,y,z coords of nodes.   The node number is optional, and is ignored in the code.
+         COORDINATES
+         1,  0.d0, 0.d0, 0.d0
+         2,  1.d0, 0.d0, 0.d0
+         3,  1.d0, 1.d0, 0.d0
+         4,  0.d0, 1.d0, 0.d0
+         5,  0.d0, 0.d0, 1.d0
+         6,  1.d0, 0.d0, 1.d0
+         7,  1.d0, 1.d0, 1.d0
+         8,  0.d0, 1.d0, 1.d0
+         9,  2.d0, 0.d0, 0.d0
+        10,  2.d0, 1.d0, 0.d0
+        11,   2.d0, 0.d0, 1.d0
+        12,   2.d0, 1.d0, 1.d0
+        END COORDINATES
+      END NODES
+%
+%     The ELEMENT command defines properties of elements
+%     The parameters are no. nodes on the element, no. properties, total no. state variables, identifier
+%
+%     The ELEMENT command defines properties of elements
+      ELEMENTS, USER
+        PARAMETERS, 8, 48, U1   % The Un activates the ABAQUS UEL
+        PROPERTIES
+          1.d0, 200.d0  % Props are mu,K
+          2.d0,2.d0,2.d0,1.d0      % G11, G22, G33, G44
+        END PROPERTIES
+
+%     Define element connectivity
+%     The element number (first number in the list) is optional, and is ignored in the code
+        CONNECTIVITY, zone1
+    1,     1, 2, 3, 4, 5, 6, 7, 8
+    2,     2, 9, 10, 3, 6, 11, 12, 7
+        END CONNECTIVITY
+
+%     The PROPERTIES, PARAMETERS, CONNECTIVITY keywords can be repeated here to define more set of elements with different properties
+
+        END ELEMENTS
+        END MESH
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% BOUNDARY CONDITIONS %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%     The BOUNDARY conditions key starts definition of BCs
+      BOUNDARY CONDITIONS
+
+%       The HISTORY key defines a time history that can be applied to DOFs or distributed loads
+        HISTORY, dof_history
+          0.d0, 0.d0                  % Each line gives a time value and then a function value
+         10.d0, 3.d0
+        END HISTORY
+
+
+%       SUBROUTINE PARAMETERS defines a list of parameters passed to user-subroutines generating DOFs
+        SUBROUTINE PARAMETERS, stretch-rotation
+           1      % stretch direction
+           1.50d0   % Change in length
+           10     % No. extension steps
+           90.d0  % Rotation angle (degrees)
+           3      % Rotation axis (1,2,or 3)
+           10      % no. rotation steps
+           4      % no. base nodes
+           4      % no. end nodes
+           1      % Fixed node on base
+           4      % Second constrained node on base
+           3      % Direction of constraint for second node
+          1,4,5,8   % nodes on base
+          9,10,12,11  % nodes on end
+        END SUBROUTINE PARAMETERS
+
+
+
+        NODESET, left
+           1, 4, 5, 8
+        END NODESET
+        NODESET, right
+           9, 10, 12, 11
+        END NODESET
+        NODESET, side
+           1, 2, 5, 6, 11, 9
+        END NODESET
+
+
+
+%       The DEGREE OF FREEDOM key assigns values to nodal DOFs
+%       The syntax is node set name, DOF number, and either a value or a history name.
+%     
+        DEGREES OF FREEDOM
+            left,  1, SUBROUTINE, stretch-rotation
+            left,  2, SUBROUTINE, stretch-rotation
+            left,  3, SUBROUTINE, stretch-rotation
+            right, 1, SUBROUTINE, stretch-rotation
+            right, 2, SUBROUTINE, stretch-rotation
+            right, 3, SUBROUTINE, stretch-rotation
+        END DEGREES OF FREEDOM
+
+
+
+   END BOUNDARY CONDITIONS
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% Mesh printing, error checking %%%%%%%%%%%%%%%%%%%%
+
+%  Print the initial mesh to a file named initial_mesh.dat
+
+   PRINT INITIAL MESH, initial_mesh.dat
+
+%   TIME, VALUE, 0.d0        % Use this to specify the initial time
+%   TIME, INCREMENT, 0.01d0  % Use this to specify a time increment (often needed for check stiffness)
+
+%   The CHECK STIFFNESS key tests the element subroutine to ensure that
+%   the residual force vector is consistent with the stiffness
+     CHECK STIFFNESS, U1
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% Analysis %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+   %   The STATIC STEP key initializes a static load step
+
+     STATIC STEP
+
+
+          INITIAL TIME STEP, 1.d0        % Test of a comment here
+          MAX TIME STEP, 1.d0
+          MIN TIME STEP, 0.001d0
+          MAX NUMBER OF STEPS, 20
+          STOP TIME, 40.d0
+          STATE PRINT STEP INTERVAL, 1
+          USER PRINT STEP INTERVAL, 1
+
+
+%        The SOLVER key controls the equation solver and Newton-Raphson iterations
+%        The options are FACTOR for direct solver, CONJUGATE GRADIENT for cg solver
+%        Factor will work on anything but might be slow for large equation systems.   
+%        Conjugate gradient works well for elasticity problems but (with the diagonal preconditioner used here) is not so good for unsymmetric matrices
+%                        LINEAR for linear equations, NONLINEAR for nonlinear equations
+%                        For nonlinear solver, must specify convergence tolerance and max # iterations
+%                        UNSYMMETRIC  (optional - only for unsymmetric stiffness)
+
+
+         SOLVER, DIRECT, NONLINEAR, 1.d-05,15, UNSYMMETRIC
+
+
+%      This prints the DOF values and projected nodal state for all solid elements to a tecplot readable file
+%      Nodal variables are printed as
+%         X, Y, (Z), Ux, Uy, (Uz), Projected states.
+%         The projected states are controlled by the user - see subroutine elstat in file usrelem.f90
+%         Also (for this example file) subroutine state_linelast_3dbasic in file el_linelast_3Dbasic.f90
+%         In this example the states are the stresses sxx,syy,szz,sxy,sxz,syz
+         PRINT STATE, Output_files\contourplots.dat
+%            DEGREES OF FREEDOM
+            FIELD VARIABLES, S11,S22,S33,S12,S13,S23
+            DISPLACED MESH
+            DISPLACEMENT SCALE FACTOR, 1.d0
+         END PRINT STATE
+
+
+        END STATIC STEP
+         
+
+   STOP

@@ -1,0 +1,163 @@
+%
+%             Demonstration input file for simple general purpose FEA code EN234FEA
+%                                    A.F. Bower, August 2017
+%                                              HW8
+%
+%              Single element test of phase field diffusion element with linear elasticity
+%              Element is assumed to be coded as an ABAQUS UEL
+%
+%
+% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% MESH DEFINITION %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%
+    MESH
+
+%    The NODE command defines properties of the nodes.  
+%    The parameters are # of coords, # of DOF, and an optional integer identifier
+       NODES
+%    The parameters are # of coords, # of DOF, and an optional integer identifier
+       PARAMETERS, 2, 4, 1
+%      Specify which nodal DOF are displacements.  In the example, DOF 1 is the x displacement, 2 is the y displacement, 3 is the z displacement
+       DISPLACEMENT DOF, 1, 2
+%    Enter x,y,z coords of nodes.   The node number is optional, and is ignored in the code.
+         COORDINATES
+%  Coords for 8 noded element
+         1,  0.d0, 0.d0
+         2,  2.d0, 0.d0
+         3,  2.d0, 2.d0
+         4,  0.d0, 2.d0
+        END COORDINATES
+%    The parameters are # of coords, # of DOF, and an optional integer identifier
+       PARAMETERS, 2, 2, 2
+%      Specify which nodal DOF are displacements.  In the example, DOF 1 is the x displacement, 2 is the y displacement, 3 is the z displacement
+       DISPLACEMENT DOF, 1, 2
+%    Enter x,y,z coords of nodes.   The node number is optional, and is ignored in the code.
+         COORDINATES
+%  Coords for 8 noded element
+         5,  1.d0, 0.d0
+         6,  2.d0, 1.d0
+         7,  1.d0, 2.d0
+         8,  0.d0, 1.d0
+        END COORDINATES
+      END NODES
+%
+%     The ELEMENT command defines properties of elements
+%     The parameters are no. nodes on the element, no. properties, total no. state variables (4*# integration points), integer identifier
+
+      ELEMENTS, USER
+        PARAMETERS, 8, 16, U1
+%       Define element properties - the values are passed to user subroutine elstif in the order they are listed here
+        PROPERTIES
+         100.d0, 0.3d0      % E, nu
+         0.0d0, 1.d0, 0.001d0, 1.d0   % Omega, W, kappa, diffusion coefft
+         0.5d0                     % Theta
+        END PROPERTIES
+%     Define element connectivity
+%     The element number (first number in the list) is optional, and is ignored in the code
+        CONNECTIVITY, zone1
+    1,     1, 2, 3, 4, 5, 6, 7, 8
+        END CONNECTIVITY
+
+%     The PROPERTIES, PARAMETERS, CONNECTIVITY keywords can be repeated here to define more set of elements with different properties
+
+        END ELEMENTS
+      END MESH
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% BOUNDARY CONDITIONS %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%     The BOUNDARY conditions key starts definition of BCs
+      BOUNDARY CONDITIONS
+
+%       The HISTORY key defines a time history that can be applied to DOFs or distributed loads
+        HISTORY, dof_history
+          0.d0, 0.d0                  % Each line gives a time value and then a function value
+         10.d0, 1.d0
+        END HISTORY
+
+        HISTORY, dload_history
+          0.d0, 2.d0
+         10.d0, 2.d0
+        END HISTORY
+ 
+%       The NODESET key defines a list of nodes
+        NODESET, left
+           1, 4, 8
+        END NODESET
+        NODESET, right
+           2, 3, 6
+        END NODESET
+        NODESET, base
+           1, 2, 5
+        END NODESET
+        NODESET, top
+           3,4,7           
+        END NODESET
+        NODESET, corners
+           1,2,3,4
+        END NODESET
+
+
+%       The DEGREE OF FREEDOM key assigns values to nodal DOFs
+%       The syntax is node set name, DOF number, VALUE/HISTORY/SUBROUTINE, value/history name/subroutine parameter list name.
+%     
+        DEGREES OF FREEDOM
+           left, 1, VALUE, 0.d0
+           right, 1, HISTORY, dof_history
+           base, 2, VALUE, 0.d0
+        END DEGREES OF FREEDOM
+
+   END BOUNDARY CONDITIONS
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% Mesh printing, error checking %%%%%%%%%%%%%%%%%%%%
+
+%  Print the initial mesh to a file named initial_mesh.dat
+
+   PRINT INITIAL MESH, initial_mesh.dat
+
+   TIME, VALUE, 0.d0        % Use this to specify the initial time
+   TIME, INCREMENT, 0.01d0  % Use this to specify a time increment (often needed for check stiffness)
+
+%   The CHECK STIFFNESS key tests the element subroutine to ensure that
+%   the residual force vector is consistent with the stiffness
+%       CHECK STIFFNESS, U1
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% Analysis %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+   %   The STATIC STEP key initializes a static load step
+
+     STATIC STEP
+
+          INITIAL TIME STEP, 1.d-03       
+          MAX TIME STEP, 1.d-03
+          MIN TIME STEP, 0.00001d0
+          MAX NUMBER OF STEPS, 3
+          STOP TIME, 10.d0
+          USER PRINT STEP INTERVAL, 1
+
+%        The SOLVER key controls the equation solver and Newton-Raphson iterations
+%        The options are FACTOR for direct solver, CONJUGATE GRADIENT for cg solver
+%        Factor will work on anything but might be slow for large equation systems.   
+%        Conjugate gradient works well for elasticity problems but (with the diagonal preconditioner used here) is not so good for unsymmetric matrices
+%                        LINEAR for linear equations, NONLINEAR for nonlinear equations
+%                        For nonlinear solver, must specify convergence tolerance and max # iterations
+%                        UNSYMMETRIC  (optional - only for unsymmetric stiffness)
+
+
+         SOLVER, DIRECT, NONLINEAR, 1.d-05,15, UNSYMMETRIC
+
+
+
+          USER PRINT FILES
+%          List file names to contain the output. Fortran unit numbers are provided to each file in the user subroutine
+%            filename1.dat
+             Output_files\phasefield_contourplots.dat
+          END USER PRINT FILES
+
+          USER PRINT PARAMETERS
+              8 %   Specify the HW problem number
+          END USER PRINT
+
+
+        END STATIC STEP
+         
+
+   STOP
