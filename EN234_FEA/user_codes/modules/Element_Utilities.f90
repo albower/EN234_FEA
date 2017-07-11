@@ -12,11 +12,11 @@ module Element_Utilities
   
     real (prec) :: shape_function_spatial_derivatives_1D(3,1)
     real (prec) :: shape_function_spatial_derivatives_2D(9,2)
-    real (prec) :: shape_function_spatial_derivatives_3D(20,3)
+    real (prec) :: shape_function_spatial_derivatives_3D(27,3)
 
     real (prec) :: vol_avg_shape_function_derivatives_1D(3,1)
     real (prec) :: vol_avg_shape_function_derivatives_2D(9,2)
-    real (prec) :: vol_avg_shape_function_derivatives_3D(20,3)
+    real (prec) :: vol_avg_shape_function_derivatives_3D(27,3)
   
     real (prec) :: integrationpoints_1D(6,1)
     real (prec) :: integrationpoints_2D(2,9)
@@ -50,6 +50,24 @@ contains
         cross_product(3) = a(1)*b(2)-a(2)*b(1)
 
     end function cross_product
+
+    function det33(A)
+
+        use Types
+        implicit none
+
+        real (prec), intent(in)  :: A(3,3)
+
+        real (prec) det33
+
+        det33 =   A(1,1)*A(2,2)*A(3,3)  &
+            - A(1,1)*A(2,3)*A(3,2)  &
+            - A(1,2)*A(2,1)*A(3,3)  &
+            + A(1,2)*A(2,3)*A(3,1)  &
+            + A(1,3)*A(2,1)*A(3,2)  &
+            - A(1,3)*A(2,2)*A(3,1)
+
+    end function det33
 
     subroutine invert_small(A,A_inverse,determinant)  ! Compute the inverse and determinant of a 3x3 or 2x2 matrix
         use Types
@@ -106,6 +124,55 @@ contains
         endif
 
     end subroutine invert_small
+
+    subroutine inverse_LU(A,A_inverse,n)  ! Compute the inverse of an arbitrary matrix by LU decomposition
+        use Types
+        use ParamIO
+        implicit none
+
+        integer, intent(in)  :: n
+
+        real (prec), intent(inout) :: A(n,n)
+        real (prec), intent(out)   :: A_inverse(n,n)
+
+        real (prec) :: L(n,n), U(n,n), b(n), d(n), x(n)
+        real (prec) :: coeff
+        integer :: i, j, k
+
+        L=0.d0
+        U=0.d0
+        b=0.d0
+
+        do k=1, n-1
+            do i=k+1,n
+                coeff=a(i,k)/a(k,k)
+                L(i,k) = coeff
+                A(i,k+1:n) = A(i,k+1:n)-coeff*A(k,k+1:n)
+            end do
+        end do
+
+        forall (i=1:n)  L(i,i) = 1.d0
+        forall (j=1:n) U(1:j,j) = A(1:j,j)
+        do k=1,n
+            b(k)=1.d0
+            d(1) = b(1)
+            do i=2,n
+                d(i)=b(i)
+                d(i) = d(i) - dot_product(L(i,1:i-1),d(1:i-1))
+            end do
+            x(n)=d(n)/U(n,n)
+            do i = n-1,1,-1
+                x(i) = d(i)
+                x(i)=x(i)-dot_product(U(i,i+1:n),x(i+1:n))
+                x(i) = x(i)/U(i,i)
+            end do
+            A_inverse(1:n,k) = x(1:n)
+            b(k)=0.d0
+        end do
+
+    end subroutine inverse_LU
+
+
 
     subroutine eigenvecs33(A,eigenvalues,eigenvectors)     ! Compute eigenvals and eigenvectors of symmetric 3x3 matrix
 
@@ -333,7 +400,7 @@ contains
                     w(2) = .1000000000000000D+01
                     return
                 case (3)
-                    xi(3,1) = 0.7745966692414834D+00
+                    xi(1,1) = 0.7745966692414834D+00
                     xi(2,1) = .0000000000000000D+00
                     xi(3,1) = -.7745966692414834D+00
                     w(1) = .5555555555555556D+00
@@ -634,7 +701,7 @@ contains
         real (prec), intent(out) :: f(:)          ! Shape functions
         real (prec), intent(out) :: df(:,:)       ! Shape function derivatives
     
-        real (prec) :: z, g1, g2, g3, h1, h2, h3, dg1, dg2, dh1, dh2, dzdp,dzdq, xi4
+        real (prec) :: z, g1, g2, g3, h1, h2, h3, dg1, dg2, dg3, dh1, dh2, dh3, dzdp,dzdq, xi4
     
         if (size(df)==3) then    ! 1D shape functions
     
@@ -759,6 +826,12 @@ contains
                 h1 = -.5D0*xi(2)*(1.D0 - xi(2))
                 h2 = (1.D0 - xi(2))*(1.D0 + xi(2))
                 h3 = .5D0*xi(2)*(1.D0 + xi(2))
+                dg1 = xi(1) - 0.5d0
+                dg2 = -2.d0*xi(1)
+                dg3 = xi(1) + 0.5d0
+                dh1 = xi(2)-0.5d0
+                dh2 = -2.d0*xi(2)
+                dh3 = xi(2) + 0.5d0
                 f(1) = g1*h1
                 f(2) = g2*h1
                 f(3) = g3*h1
@@ -768,6 +841,24 @@ contains
                 f(7) = g1*h3
                 f(8) = g2*h3
                 f(9) = g3*h3
+                df(1,1) = dg1*h1
+                df(1,2) = g1*dh1
+                df(2,1) = dg2*h1
+                df(2,2) = g2*dh1
+                df(3,1) = dg3*h1
+                df(3,2) = g3*dh1
+                df(4,1) = dg1*h2
+                df(4,2) = g1*dh2
+                df(5,1) = dg2*h2
+                df(5,2) = g2*dh2
+                df(6,1) = dg3*h2
+                df(6,2) = g3*dh2
+                df(7,1) = dg1*h3
+                df(7,2) = g1*dh3
+                df(8,1) = dg2*h3
+                df(8,2) = g2*dh3
+                df(9,1) = dg3*h3
+                df(9,2) = g3*dh3
             end if
         else if (size(df)==60) then  !3D shape functions
             if (n_nodes == 4) then
@@ -994,6 +1085,14 @@ contains
                 if (face == 2) list(1:3) = [1,4,2]
                 if (face == 3) list(1:3) = [2,4,3]
                 if (face == 4) list(1:3) = [3,4,1]
+            else if (nelnodes ==6) then
+                nfacenodes = 3
+                if (face==1) list(1:3) = [1,2,3]
+                if (face==2) list(1:3) = [6,5,4]
+                if (face==3) list(1:4) = [1,2,5,4]
+                if (face==4) list(1:4) = [2,3,6,5]
+                if (face==5) list(1:4) = [4,6,3,1]
+                if (face>2) nfacenodes = 4
             else if (nelnodes == 10) then
                 nfacenodes = 6
                 if   (face == 1) list(1:6) = [1,2,3,5,6,7]
@@ -1008,6 +1107,14 @@ contains
                 if (face==4) list(1:4) = [2,6,7,3]
                 if (face==5) list(1:4) = [3,7,8,4]
                 if (face==6) list(1:4) = [4,8,5,1]
+            else if (nelnodes ==15) then
+                nfacenodes = 6
+                if (face==1) list(1:6) = [1,2,3,7,8,9]
+                if (face==2) list(1:6) = [6,5,4,11,10,12]
+                if (face==3) list(1:8) = [1,2,5,4,7,14,10,13]
+                if (face==4) list(1:8) = [2,3,6,5,8,15,11,14]
+                if (face==5) list(1:8) = [4,6,3,1,12,15,9,13]
+                if (face>2) nfacenodes = 8
             else  if (nelnodes == 20) then
                 nfacenodes = 8
                 if (face == 1) list(1:8) = [1,2,3,4,9,10,11,12]
