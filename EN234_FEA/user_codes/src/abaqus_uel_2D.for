@@ -108,7 +108,7 @@
       double precision  ::  xi1(6)                            ! 1D integration points
       double precision  ::  w1(6)                              ! Integration weights
       double precision  ::  N1(3)                             ! 1D shape functions
-      double precision  ::  dN1dxi(3)                       ! 1D shape function derivatives
+      double precision  ::  dN1dxi(3)                         ! 1D shape function derivatives
       double precision  ::  norm(2)                           ! Normal to an element face
       double precision  ::  dxdxi1(2)                         ! Derivative of 1D spatial coord wrt normalized areal coord
     !
