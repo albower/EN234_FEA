@@ -122,6 +122,8 @@ subroutine continuum_element_static_2D(current_step_number,lmn, element_identifi
     real (prec)  ::  drplde(4)                                ! Derivative of plastic work wrt strain (unused)
     real (prec)  ::  drpldt
     real (prec)  ::  abq_TIME(2)
+    real (prec)  ::  predef(1)                                ! Dummy argument for predefined field
+    real (prec)  ::  dpred(1)                                 ! Dummy argument for predefined field increment
 
 
     integer :: ie
@@ -167,7 +169,7 @@ subroutine continuum_element_static_2D(current_step_number,lmn, element_identifi
 
         call calculate_shapefunctions(xi(1:2,kint),n_nodes,N,dNdxi)
         dxdxi = matmul(x(1:2,1:n_nodes),dNdxi(1:n_nodes,1:2))
-        xintpt = matmul(x(1:2,1:n_nodes),N(1:n_nodes))
+        xintpt(1:2) = matmul(x(1:2,1:n_nodes),N(1:n_nodes))
         call invert_small(dxdxi,dxidx,determinant)
         dNdx(1:n_nodes,1:2) = matmul(dNdxi(1:n_nodes,1:2),dxidx)
         do i = 1,2
@@ -201,6 +203,8 @@ subroutine continuum_element_static_2D(current_step_number,lmn, element_identifi
     do kint = 1,n_points
         call calculate_shapefunctions(xi(1:2,kint),n_nodes,N,dNdxi)
         dxdxi = matmul(x(1:2,1:n_nodes),dNdxi(1:n_nodes,1:2))
+        xintpt(1:2) = matmul(x(1:2,1:n_nodes),N(1:n_nodes))
+        xintpt(3) = 0.d0
         call invert_small(dxdxi,dxidx,determinant)
         dNdx(1:n_nodes,1:2) = matmul(dNdxi(1:n_nodes,1:2),dxidx)
 !
@@ -261,7 +265,7 @@ subroutine continuum_element_static_2D(current_step_number,lmn, element_identifi
 
         Call UMAT(stress,updated_state_variables(iof+11:iof+n_state_vars_per_intpt-1),Dcorot,SSE,SPD,SCD, &
                   RPL,Dtherm,DRPLDE,DRPLDT, &
-                  strain,strainInc,abq_time,DTIME,BTEMP,BTINC,dummy,dummy,material_name, &
+                  strain,strainInc,abq_time,DTIME,BTEMP,BTINC,predef,dpred,material_name, &
                   3,1,4,n_state_vars_per_intpt-11,material_properties,n_properties,xintpt,dR,PNEWDT, &
                   charLength,F0,F1,lmn,kint,0,0,1,current_step_number)
 
@@ -476,7 +480,8 @@ subroutine continuum_element_static_3D(current_step_number,lmn, element_identifi
     real (prec)  ::  drplde(6)                                ! Derivative of plastic work wrt strain (unused)
     real (prec)  ::  drpldt
     real (prec)  ::  abq_TIME(2)
-
+    real (prec)  ::  predef(1)                                ! Dummy argument for predefined field
+    real (prec)  ::  dpred(1)                                 ! Dummy argument for predefined field increment
 
     integer :: ie
     integer :: i
@@ -617,7 +622,7 @@ subroutine continuum_element_static_3D(current_step_number,lmn, element_identifi
 
         Call UMAT(stress,updated_state_variables(iof+15:iof+n_state_vars_per_intpt-1),Dcorot,SSE,SPD,SCD, &
                   RPL,Dcorot,DRPLDE,DRPLDT, &
-                  strain,strainInc,abq_time,DTIME,BTEMP,BTINC,dummy,dummy,material_name, &
+                  strain,strainInc,abq_time,DTIME,BTEMP,BTINC,predef,dpred,material_name, &
                   3,3,6,n_state_vars_per_intpt-15,material_properties,n_properties,xintpt,dR,PNEWDT, &
                   charLength,F0,F1,lmn,kint,0,0,1,current_step_number)
 
@@ -837,7 +842,7 @@ subroutine continuum_element_dynamic_3D(lmn, element_identifier, n_nodes, node_p
     
     
     
-    real (prec)  ::  dummy                                    ! Dummy variable
+    real (prec)  ::  dummy(1)                                 ! Dummy variable
 !
     real (prec)  ::  defgradOld(9)                            ! Deformation gradient at start of step in global basis
     real (prec)  ::  defgradNew(9)                            ! Deformation gradient at end of step in global basis
@@ -847,11 +852,16 @@ subroutine continuum_element_dynamic_3D(lmn, element_identifier, n_nodes, node_p
     real (prec)  ::  stressNew(6)                             ! Stress at end of increment (in co-rotational basis)
     real (prec)  ::  strainInc(6)                             ! Strain increment (in co-rotational basis)
     real (prec)  ::  relSpinInc(9)                            ! Relative spin increment dW-dR in global basis
-    real (prec)  ::  enerInternOld
-    real (prec)  ::  enerInternNew
-    real (prec)  ::  enerInelasOld
-    real (prec)  ::  enerInelasNew
-    real (prec)  ::  charLength                               ! Characteristic element length
+    real (prec)  ::  enerInternOld(1)
+    real (prec)  ::  enerInternNew(1)
+    real (prec)  ::  enerInelasOld(1)
+    real (prec)  ::  enerInelasNew(1)
+    real (prec)  ::  charLength(1)                               ! Characteristic element length
+    real (prec)  ::  density_vumat(1)                          ! Density vector for vumat subroutine argument
+    real (prec)  ::  tempold(1)
+    real (prec)  ::  tempnew(1)
+    real (prec)  ::  fieldold(1)
+    real (prec)  ::  fieldnew(1)
 
 
     integer :: ie
@@ -914,7 +924,7 @@ subroutine continuum_element_dynamic_3D(lmn, element_identifier, n_nodes, node_p
     end do
     J0bar = J0bar/el_vol
     J1bar = J1bar/el_vol
-    charLength = el_vol**(1.d0/3.d0)
+    charLength(1) = el_vol**(1.d0/3.d0)
     dNbardx = dNbardx/Jmidbar
     dLkkbar = (dLbar(1,1) + dLbar(2,2) + dLbar(3,3))/Jmidbar
 
@@ -990,12 +1000,15 @@ subroutine continuum_element_dynamic_3D(lmn, element_identifier, n_nodes, node_p
         enerInternOld = initial_state_variables(iof+12)
         enerInelasOld = initial_state_variables(iof+13)
 
+        density_vumat(1) = density
+        tempold(1) = BTEMP
+        tempnew(1) = BTEMP+BTINC
         call vumat(1, 3, 3, n_state_variables-15 ,0, n_properties, 0, &
        TIME+DTIME, TIME+DTIME , DTIME, material_name, xintpt, charLength, &
-       material_properties, density, strainInc, relSpinInc, &
-       BTEMP, stretchOld, defgradOld, dummy, &
+       material_properties, density_vumat, strainInc, relSpinInc, &
+       tempold, stretchOld, defgradOld, fieldold, &
        stressOld, initial_state_variables(iof+15:iof+n_state_variables-1), enerInternOld, enerInelasOld, &
-       BTEMP+BTINC, stretchNew, defgradNew, dummy, &
+       tempnew, stretchNew, defgradNew, fieldnew, &
        stressNew, updated_state_variables(iof+15:iof+n_state_variables-1), enerInternNew, enerInelasNew )
 
         stress1 = reshape([stressNew(1),stressNew(4),stressNew(6), &  ! ABAQUS VUMAT storage scheme
@@ -1007,8 +1020,8 @@ subroutine continuum_element_dynamic_3D(lmn, element_identifier, n_nodes, node_p
                           stress1(1,2),stress1(1,3),stress1(2,3)]
 
         updated_state_variables(iof:iof+5) = [stress1(1,1),stress1(2,2),stress1(3,3),stress1(1,2),stress1(1,3),stress1(2,3)]
-        updated_state_variables(iof+12) = enerInternNew
-        updated_state_variables(iof+13) = enerInelasNew
+        updated_state_variables(iof+12) = enerInternNew(1)
+        updated_state_variables(iof+13) = enerInelasNew(1)
 
 
         Bbar(1:6,1:length_dof_array) = 0.d0

@@ -266,6 +266,8 @@ subroutine check_material_2D(current_step_number,lmn, element_identifier, &
     real (prec)  ::  temp33c(3,3)                             ! Workspace array
 
     real (prec)  ::  dummy                                    ! Dummy variable
+    real (prec)  ::  predef(1)                                ! Dummy variable
+    real (prec)  ::  dpred(1)                                 ! Dummy variable
     real (prec)  ::  Dcorot(4,4)                              ! Corotational material tangent
     real (prec)  ::  Dcorot_numerical(4,4)                    ! Numerical corotataional material tangent
     real (prec)  ::  Dtherm(4)                                ! Tangent wrt temp change
@@ -323,7 +325,7 @@ subroutine check_material_2D(current_step_number,lmn, element_identifier, &
 
         call calculate_shapefunctions(xi(1:2,kint),n_nodes,N,dNdxi)
         dxdxi = matmul(x(1:2,1:n_nodes),dNdxi(1:n_nodes,1:2))
-        xintpt = matmul(x(1:2,1:n_nodes),N(1:n_nodes))
+        xintpt(1:2) = matmul(x(1:2,1:n_nodes),N(1:n_nodes))
         call invert_small(dxdxi,dxidx,determinant)
         dNdx(1:n_nodes,1:2) = matmul(dNdxi(1:n_nodes,1:2),dxidx)
         do i = 1,2
@@ -346,6 +348,8 @@ subroutine check_material_2D(current_step_number,lmn, element_identifier, &
     kint = 1              ! Check material at the first integration point
     call calculate_shapefunctions(xi(1:2,kint),n_nodes,N,dNdxi)
     dxdxi = matmul(x(1:2,1:n_nodes),dNdxi(1:n_nodes,1:2))
+    xintpt(1:2) = matmul(x(1:2,1:n_nodes),N(1:n_nodes))
+    xintpt(3) = 0.d0
     call invert_small(dxdxi,dxidx,determinant)
     dNdx(1:n_nodes,1:2) = matmul(dNdxi(1:n_nodes,1:2),dxidx)
     !
@@ -407,7 +411,7 @@ subroutine check_material_2D(current_step_number,lmn, element_identifier, &
     stress_initial = stress
     Call UMAT(stress_initial,updated_state_variables(iof+11:iof+n_state_vars_per_intpt),Dcorot,SSE,SPD,SCD, &
         RPL,Dtherm,DRPLDE,DRPLDT, &
-        strain,strainInc,abq_time,DTIME,BTEMP,BTINC,dummy,dummy,material_name, &
+        strain,strainInc,abq_time,DTIME,BTEMP,BTINC,predef,dpred,material_name, &
         3,1,4,n_state_vars_per_intpt-11,material_properties,n_properties,xintpt,dR,PNEWDT, &
         charLength,F0,F1,lmn,kint,0,0,1,current_step_number)
 
@@ -427,7 +431,7 @@ subroutine check_material_2D(current_step_number,lmn, element_identifier, &
         stress(1:4) = [stress0(1,1),stress0(2,2),stress0(3,3),stress0(1,2)]
         Call UMAT(stress,updated_state_variables(iof+11:iof+n_state_vars_per_intpt),Dcorot,SSE,SPD,SCD, &
             RPL,Dtherm,DRPLDE,DRPLDT, &
-            strain,strainInc,abq_time,DTIME,BTEMP,BTINC,dummy,dummy,material_name, &
+            strain,strainInc,abq_time,DTIME,BTEMP,BTINC,predef,dpred,material_name, &
             3,1,4,n_state_vars_per_intpt-11,material_properties,n_properties,xintpt,dR,PNEWDT, &
             charLength,F0,F1,lmn,kint,0,0,1,current_step_number)
         Dcorot_numerical(1:4,i) = (stress(1:4) - stress_initial(1:4))/1.d-07
@@ -558,6 +562,8 @@ subroutine check_material_3D(current_step_number,lmn, element_identifier, &
     real (prec)  ::  drplde(6)                                ! Derivative of plastic work wrt strain (unused)
     real (prec)  ::  drpldt
     real (prec)  ::  abq_TIME(2)
+    real (prec)  ::  predef(1)                                ! Dummy argument for predefined field
+    real (prec)  ::  dpred(1)                                 ! Dummy argument for predefined field increment
 
 
     integer :: ie
@@ -693,7 +699,7 @@ subroutine check_material_3D(current_step_number,lmn, element_identifier, &
         stress_initial = stress
         Call UMAT(stress_initial,updated_state_variables(iof+15:iof+n_state_vars_per_intpt),Dcorot,SSE,SPD,SCD, &
                   RPL,Dtherm,DRPLDE,DRPLDT, &
-                  strain,strainInc,abq_time,DTIME,BTEMP,BTINC,dummy,dummy,material_name, &
+                  strain,strainInc,abq_time,DTIME,BTEMP,BTINC,predef,dpred,material_name, &
                   3,3,6,n_state_vars_per_intpt-15,material_properties,n_properties,xintpt,dR,PNEWDT, &
                   charLength,F0,F1,lmn,kint,0,0,1,current_step_number)
 
@@ -713,7 +719,7 @@ subroutine check_material_3D(current_step_number,lmn, element_identifier, &
                        stress0(1,2),stress0(1,3),stress0(2,3)]
         Call UMAT(stress,updated_state_variables(iof+15:iof+n_state_vars_per_intpt),Dcorot,SSE,SPD,SCD, &
                   RPL,Dcorot,DRPLDE,DRPLDT, &
-                  strain,strainInc,abq_time,DTIME,BTEMP,BTINC,dummy,dummy,material_name, &
+                  strain,strainInc,abq_time,DTIME,BTEMP,BTINC,predef,dpred,material_name, &
                   3,3,6,n_state_vars_per_intpt-15,material_properties,n_properties,xintpt,dR,PNEWDT, &
                   charLength,F0,F1,lmn,kint,0,0,1,current_step_number)
         Dcorot_numerical(1:6,i) = (stress(1:6) - stress_initial(1:6))/1.d-07

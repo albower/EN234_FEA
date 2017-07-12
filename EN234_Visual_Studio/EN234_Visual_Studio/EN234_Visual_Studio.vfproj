@@ -1,0 +1,127 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<VisualStudioProject ProjectCreator="Intel Fortran" Keyword="Console Application" Version="11.0" ProjectIdGuid="{CC3FDA41-ABA6-4085-9E0A-8D4AE0247B5E}">
+	<Platforms>
+		<Platform Name="Win32"/>
+		<Platform Name="x64"/></Platforms>
+	<Configurations>
+		<Configuration Name="Debug|Win32">
+				<Tool Name="VFFortranCompilerTool" SuppressStartupBanner="true" DebugInformationFormat="debugEnabled" Optimization="optimizeDisabled" WarnInterfaces="true" Traceback="true" BoundsCheck="true" StackFrameCheck="true" RuntimeLibrary="rtMultiThreadedDebugDLL"/>
+				<Tool Name="VFLinkerTool" LinkIncremental="linkIncrementalNo" SuppressStartupBanner="true" GenerateDebugInformation="true" SubSystem="subSystemConsole"/>
+				<Tool Name="VFResourceCompilerTool"/>
+				<Tool Name="VFMidlTool" SuppressStartupBanner="true"/>
+				<Tool Name="VFCustomBuildTool"/>
+				<Tool Name="VFPreLinkEventTool"/>
+				<Tool Name="VFPreBuildEventTool"/>
+				<Tool Name="VFPostBuildEventTool"/>
+				<Tool Name="VFManifestTool" SuppressStartupBanner="true"/></Configuration>
+		<Configuration Name="Release|Win32">
+				<Tool Name="VFFortranCompilerTool" SuppressStartupBanner="true" RuntimeLibrary="rtMultiThreadedDLL"/>
+				<Tool Name="VFLinkerTool" LinkIncremental="linkIncrementalNo" SuppressStartupBanner="true" SubSystem="subSystemConsole"/>
+				<Tool Name="VFResourceCompilerTool"/>
+				<Tool Name="VFMidlTool" SuppressStartupBanner="true"/>
+				<Tool Name="VFCustomBuildTool"/>
+				<Tool Name="VFPreLinkEventTool"/>
+				<Tool Name="VFPreBuildEventTool"/>
+				<Tool Name="VFPostBuildEventTool"/>
+				<Tool Name="VFManifestTool" SuppressStartupBanner="true"/></Configuration>
+		<Configuration Name="Debug|x64">
+				<Tool Name="VFFortranCompilerTool" SuppressStartupBanner="true" DebugInformationFormat="debugEnabled" Optimization="optimizeDisabled" WarnInterfaces="true" Traceback="true" BoundsCheck="true" StackFrameCheck="true" RuntimeLibrary="rtMultiThreadedDebugDLL"/>
+				<Tool Name="VFLinkerTool" LinkIncremental="linkIncrementalNo" SuppressStartupBanner="true" GenerateDebugInformation="true" SubSystem="subSystemConsole"/>
+				<Tool Name="VFResourceCompilerTool"/>
+				<Tool Name="VFMidlTool" SuppressStartupBanner="true" TargetEnvironment="midlTargetAMD64"/>
+				<Tool Name="VFCustomBuildTool"/>
+				<Tool Name="VFPreLinkEventTool"/>
+				<Tool Name="VFPreBuildEventTool"/>
+				<Tool Name="VFPostBuildEventTool"/>
+				<Tool Name="VFManifestTool" SuppressStartupBanner="true"/></Configuration>
+		<Configuration Name="Release|x64">
+				<Tool Name="VFFortranCompilerTool" SuppressStartupBanner="true" RuntimeLibrary="rtMultiThreadedDLL"/>
+				<Tool Name="VFLinkerTool" LinkIncremental="linkIncrementalNo" SuppressStartupBanner="true" SubSystem="subSystemConsole"/>
+				<Tool Name="VFResourceCompilerTool"/>
+				<Tool Name="VFMidlTool" SuppressStartupBanner="true" TargetEnvironment="midlTargetAMD64"/>
+				<Tool Name="VFCustomBuildTool"/>
+				<Tool Name="VFPreLinkEventTool"/>
+				<Tool Name="VFPreBuildEventTool"/>
+				<Tool Name="VFPostBuildEventTool"/>
+				<Tool Name="VFManifestTool" SuppressStartupBanner="true"/></Configuration></Configurations>
+	<Files>
+		<Filter Name="Header Files" Filter="fi;fd;h;inc">
+		<File RelativePath="..\..\EN234_FEA\user_codes\src\aba_param.inc"/>
+		<File RelativePath="..\..\EN234_FEA\user_codes\src\vaba_param.inc"/></Filter>
+		<Filter Name="Input_files">
+		<File RelativePath="..\..\EN234_FEA\input_files\Abaqus_uel_beam_1el.in"/>
+		<File RelativePath="..\..\EN234_FEA\input_files\Abaqus_uel_cantilever.in"/>
+		<File RelativePath="..\..\EN234_FEA\input_files\Abaqus_uel_continuum_beam.in"/>
+		<File RelativePath="..\..\EN234_FEA\input_files\Abaqus_uel_holeplate_2d_quad4.in"/>
+		<File RelativePath="..\..\EN234_FEA\input_files\Abaqus_uel_Holeplate_2d_quad8.in"/>
+		<File RelativePath="..\..\EN234_FEA\input_files\Abaqus_uel_holeplate_2d_tri3.in"/>
+		<File RelativePath="..\..\EN234_FEA\input_files\Abaqus_uel_holeplate_2d_tri6.in"/>
+		<File RelativePath="..\..\EN234_FEA\input_files\Abaqus_uel_holeplate_3d.in"/>
+		<File RelativePath="..\..\EN234_FEA\input_files\Abaqus_uel_hyperelastic.in"/>
+		<File RelativePath="..\..\EN234_FEA\input_files\Abaqus_uel_linear_elastic_2d.in"/>
+		<File RelativePath="..\..\EN234_FEA\input_files\Abaqus_uel_linear_elastic_3d.in"/>
+		<File RelativePath="..\..\EN234_FEA\input_files\Abaqus_uel_phasefield_1el.in"/>
+		<File RelativePath="..\..\EN234_FEA\input_files\Abaqus_uel_phasefield_coarse.in"/>
+		<File RelativePath="..\..\EN234_FEA\input_files\Abaqus_uel_phasefield_fine.in"/>
+		<File RelativePath="..\..\EN234_FEA\input_files\Abaqus_umat_holeplate_3d.in"/>
+		<File RelativePath="..\..\EN234_FEA\input_files\Abaqus_umat_hyperelastic2.in"/>
+		<File RelativePath="..\..\EN234_FEA\input_files\Abaqus_Umat_Linear_elastic_2d.in"/>
+		<File RelativePath="..\..\EN234_FEA\input_files\Abaqus_umat_linear_elastic_3d.in"/>
+		<File RelativePath="..\..\EN234_FEA\input_files\Abaqus_umat_porous_elastic.in"/>
+		<File RelativePath="..\..\EN234_FEA\input_files\Abaqus_umat_stretch_rotate.in"/>
+		<File RelativePath="..\..\EN234_FEA\input_files\Abaqus_umat_viscoplastic.in"/>
+		<File RelativePath="..\..\EN234_FEA\input_files\Abaqus_vuel_holeplate_3d.in"/>
+		<File RelativePath="..\..\EN234_FEA\input_files\Abaqus_vuel_linear_elastic_3d.in"/>
+		<File RelativePath="..\..\EN234_FEA\input_files\Abaqus_vumat_linear_elastic_3d.in"/>
+		<File RelativePath="..\..\EN234_FEA\input_files\Abaqus_vumat_McCormick.in"/></Filter>
+		<Filter Name="Resource Files" Filter="rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe">
+		<File RelativePath="..\..\EN234_FEA\modules\Bandwidth.f90"/>
+		<File RelativePath="..\..\EN234_FEA\modules\Boundaryconditions.f90"/>
+		<File RelativePath="..\..\EN234_FEA\modules\Controlparameters.f90"/>
+		<File RelativePath="..\..\EN234_FEA\modules\Dynamicstepparameters.f90"/>
+		<File RelativePath="..\..\EN234_FEA\modules\Fileparameters.f90"/>
+		<File RelativePath="..\..\EN234_FEA\modules\Globals.f90"/>
+		<File RelativePath="..\..\EN234_FEA\modules\Linkedlist_Handling.f90"/>
+		<File RelativePath="..\..\EN234_FEA\modules\Mesh.f90"/>
+		<File RelativePath="..\..\EN234_FEA\modules\ParamIO.f90"/>
+		<File RelativePath="..\..\EN234_FEA\modules\Printparameters.f90"/>
+		<File RelativePath="..\..\EN234_FEA\modules\Staticstepparameters.f90"/>
+		<File RelativePath="..\..\EN234_FEA\modules\Stiffness.f90"/>
+		<File RelativePath="..\..\EN234_FEA\modules\Types.f90"/>
+		<File RelativePath="..\..\EN234_FEA\modules\User_Subroutine_Storage.f90"/></Filter>
+		<Filter Name="Source Files" Filter="f90;for;f;fpp;ftn;def;odl;idl">
+		<File RelativePath="..\..\EN234_FEA\src\bandwidth_minimizer.f90"/>
+		<File RelativePath="..\..\EN234_FEA\src\checkstiffness.f90"/>
+		<File RelativePath="..\..\EN234_FEA\src\checktangent.f90"/>
+		<File RelativePath="..\..\EN234_FEA\src\continuum_elements.f90"/>
+		<File RelativePath="..\..\EN234_FEA\src\explicit_dynamic_step.f90"/>
+		<File RelativePath="..\..\EN234_FEA\src\main.f90"/>
+		<File RelativePath="..\..\EN234_FEA\src\parse.f90"/>
+		<File RelativePath="..\..\EN234_FEA\src\printing.f90"/>
+		<File RelativePath="..\..\EN234_FEA\src\read_input_file.f90"/>
+		<File RelativePath="..\..\EN234_FEA\src\solver_conjugate_gradient.f90"/>
+		<File RelativePath="..\..\EN234_FEA\src\solver_direct.f90"/>
+		<File RelativePath="..\..\EN234_FEA\src\staticstep.f90"/>
+		<File RelativePath="..\..\EN234_FEA\src\traction_boundarycondition.f90"/></Filter>
+		<Filter Name="User Codes">
+		<Filter Name="Modules">
+		<File RelativePath="..\..\EN234_FEA\user_codes\modules\Element_Utilities.f90"/></Filter>
+		<Filter Name="Source">
+		<File RelativePath="..\..\EN234_FEA\user_codes\src\abaqus_tecplot_interface.f90"/>
+		<File RelativePath="..\..\EN234_FEA\user_codes\src\abaqus_uel_2D.for"/>
+		<File RelativePath="..\..\EN234_FEA\user_codes\src\abaqus_uel_linelastic_3d.for"/>
+		<File RelativePath="..\..\EN234_FEA\user_codes\src\abaqus_umat_elastic.for"/>
+		<File RelativePath="..\..\EN234_FEA\user_codes\src\abaqus_vuel.for"/>
+		<File RelativePath="..\..\EN234_FEA\user_codes\src\abaqus_vumat.f90"/>
+		<File RelativePath="..\..\EN234_FEA\user_codes\src\convergencecheck.f90"/>
+		<File RelativePath="..\..\EN234_FEA\user_codes\src\el_linelast_3Dbasic.f90"/>
+		<File RelativePath="..\..\EN234_FEA\user_codes\src\new_user_element_stub.f90"/>
+		<File RelativePath="..\..\EN234_FEA\user_codes\src\user_constraint.f90"/>
+		<File RelativePath="..\..\EN234_FEA\user_codes\src\user_distributedload.f90"/>
+		<File RelativePath="..\..\EN234_FEA\user_codes\src\user_element.f90"/>
+		<File RelativePath="..\..\EN234_FEA\user_codes\src\user_initialdof.f90"/>
+		<File RelativePath="..\..\EN234_FEA\user_codes\src\user_mesh.f90"/>
+		<File RelativePath="..\..\EN234_FEA\user_codes\src\user_prescribeddof.f90"/>
+		<File RelativePath="..\..\EN234_FEA\user_codes\src\user_prescribedforce.f90"/>
+		<File RelativePath="..\..\EN234_FEA\user_codes\src\user_print_cahn_hilliard.f90"/></Filter></Filter></Files>
+	<Globals/></VisualStudioProject>

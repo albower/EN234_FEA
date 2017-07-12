@@ -125,6 +125,7 @@ subroutine assemble_lumped_mass
     integer :: abq_JDLTYP
     integer :: abq_NPREDF
     integer :: abq_LFLAGS(3)
+    integer :: el_number(1)
 
     real( prec ) :: abq_time(2)
 
@@ -206,7 +207,7 @@ subroutine assemble_lumped_mass
                 local_nodes(1:element_list(lmn)%n_nodes), &                                                                  ! Input variables
                 densities(element_list(lmn)%density_index),   &                                                              ! Input variables
                 element_list(lmn)%n_element_properties, element_properties(element_list(lmn)%element_property_index),  &     ! Input variables
-                int_element_properties(element_list(lmn)%int_element_property_index),element_list(lmn)%n_int_element_properties, & ! Input variables
+                element_list(lmn)%n_int_element_properties,int_element_properties(element_list(lmn)%int_element_property_index), & ! Input variables
                 element_coords(1:ix),ix, element_dof_increment(1:iu), element_dof_total(1:iu),iu,      &                     ! Input variables
                 ns, initial_state_variables(iof:iof+ns-1), &                                                                ! Input variables
                 updated_state_variables(iof:iof+ns),element_mass(1:iu))                 ! Output variables
@@ -285,14 +286,14 @@ subroutine assemble_lumped_mass
 
             abq_rhs(1:iu) = 0.d0
             abq_amass(1:iu*iu) = 0.d0
-
+            el_number(1) = lmn
             call VUEL(1,abq_rhs(1:iu),abq_amass(1:iu*iu),abq_dtimeStable,&
                 abq_svars(1:ns),ns, &
                 abq_energy,element_list(lmn)%n_nodes,iu, &
                 element_properties(element_list(lmn)%element_property_index),element_list(lmn)%n_element_properties, &
                 int_element_properties(element_list(lmn)%int_element_property_index),element_list(lmn)%n_int_element_properties, &
                 abq_element_coords,abq_MCRD(lmn),abq_element_dof_total,abq_element_dof_increment,abq_V,abq_A, &
-                abq_JTYPE,lmn, &
+                abq_JTYPE,el_number, &
                 abq_time,total_dynamic_time,DTIME,abq_prevTimeStep,1,current_dynamic_step, &
                 abq_LFLAGS, &
                 abq_dMassScaleFactor, &
@@ -350,7 +351,7 @@ subroutine assemble_lumped_mass
                 local_nodes(1:element_list(lmn)%n_nodes), &                                                                  ! Input variables
                 densities(element_list(lmn)%density_index),   &                                                              ! Input variables
                 element_list(lmn)%n_element_properties, element_properties(element_list(lmn)%element_property_index),  &     ! Input variables
-                int_element_properties(element_list(lmn)%int_element_property_index),element_list(lmn)%n_int_element_properties, & ! Input variables
+                element_list(lmn)%n_int_element_properties,int_element_properties(element_list(lmn)%int_element_property_index), & ! Input variables
                 element_coords(1:ix),ix, element_dof_increment(1:iu), element_dof_total(1:iu),iu,      &                     ! Input variables
                 ns, initial_state_variables(iof:iof+ns-1), &                                                                ! Input variables
                 updated_state_variables(iof:iof+ns),element_mass(1:iu))                 ! Output variables
@@ -436,6 +437,7 @@ subroutine assemble_dynamic_force
     integer :: abq_JDLTYP
     integer :: abq_NPREDF
     integer :: abq_LFLAGS(3)
+    integer :: vuel_elementno(1)
 
     real( prec ) :: abq_time(2)
 
@@ -604,13 +606,14 @@ subroutine assemble_dynamic_force
             abq_rhs(1:iu) = 0.d0
             abq_amass(1:iu*iu) = 0.d0
 
+            vuel_elementno(1) = lmn
             call VUEL(1,abq_rhs(1:iu),abq_amass(1:iu*iu),abq_dtimeStable,&
                 abq_svars(1:ns),ns, &
                 abq_energy,element_list(lmn)%n_nodes,iu, &
                 element_properties(element_list(lmn)%element_property_index),element_list(lmn)%n_element_properties, &
                 int_element_properties(element_list(lmn)%int_element_property_index),element_list(lmn)%n_int_element_properties, &
                 abq_element_coords,abq_MCRD(lmn),abq_element_dof_total,abq_element_dof_increment,abq_V,abq_A, &
-                abq_JTYPE,lmn, &
+                abq_JTYPE,vuel_elementno, &
                 abq_time,total_dynamic_time,DTIME,abq_prevTimeStep,1,current_dynamic_step, &
                 abq_LFLAGS, &
                 abq_dMassScaleFactor, &
@@ -763,6 +766,7 @@ subroutine apply_dynamic_boundaryconditions
     integer :: abq_JDLTYP
     integer :: abq_NPREDF
     integer :: abq_LFLAGS(3)
+    integer :: vuel_elementno(1)
 
     real( prec ) :: abq_time(2)
 
@@ -898,6 +902,7 @@ subroutine apply_dynamic_boundaryconditions
                     abq_adlmag(1) = dload_values(distributedload_list(load)%index_dload_values)
                 endif
 
+                vuel_elementno(1) = lmn
                 call VUEL(1,abq_rhs(1:iu),abq_amass(1:iu*iu),abq_dtimeStable,&
                     abq_svars(1:ns),ns, &
                     abq_energy,element_list(lmn)%n_nodes,iu, &
@@ -906,7 +911,7 @@ subroutine apply_dynamic_boundaryconditions
                     element_list(lmn)%n_int_element_properties, &
                     abq_element_coords,abq_MCRD(lmn),abq_element_dof_total+abq_element_dof_increment, &
                     abq_element_dof_increment,abq_V,abq_A, &
-                    abq_JTYPE,lmn, &
+                    abq_JTYPE,vuel_elementno, &
                     abq_time,total_dynamic_time,DTIME,abq_prevTimeStep,1,current_dynamic_step, &
                     abq_LFLAGS, &
                     abq_dMassScaleFactor, &
