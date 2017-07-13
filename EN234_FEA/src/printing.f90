@@ -424,10 +424,10 @@ subroutine print_state
     
         write(state_print_unit,*) trim(tecplotstring)
         if (zone_dimension(izstart)==2) then
-            write (state_print_unit,'(A10,D10.4,A15,I5,A3,I5,A9)') ' ZONE, T="',TIME+DTIME,&
+            write (state_print_unit,'(A10,D12.4,A15,I5,A3,I5,A9)') ' ZONE, T="',TIME+DTIME,&
                 '" F=FEPOINT, I=', n_printable_nodes+n_auxiliary_nodes, ' J=', n_printable_elements
         else if (zone_dimension(izstart)==3) then
-            write (state_print_unit,'(A10,D10.4,A15,I5,A3,I5,A9)') ' ZONE, T="',TIME+DTIME, &
+            write (state_print_unit,'(A10,D12.4,A15,I5,A3,I5,A9)') ' ZONE, T="',TIME+DTIME, &
                 '" F=FEPOINT, I=', n_printable_nodes+n_auxiliary_nodes, ' J=', n_printable_elements,' ET=BRICK'
         endif
 
@@ -826,10 +826,10 @@ subroutine print_state
     
             write(state_print_unit,*) trim(tecplotstring)
             if (zone_dimension(iz)==2) then
-                write (state_print_unit,'(A10,D10.4,A15,I5,A3,I5,A9)') ' ZONE, T="',TIME+DTIME,&
+                write (state_print_unit,'(A10,D12.4,A15,I5,A3,I5,A9)') ' ZONE, T="',TIME+DTIME,&
                     '" F=FEPOINT, I=', n_printable_nodes+n_auxiliary_nodes, ' J=', n_printable_elements
             else if (zone_dimension(iz)==3) then
-                write (state_print_unit,'(A10,D10.4,A15,I5,A3,I5,A9)') ' ZONE, T="',TIME+DTIME,&
+                write (state_print_unit,'(A10,D12.4,A15,I5,A3,I5,A9)') ' ZONE, T="',TIME+DTIME,&
                     '" F=FEPOINT, I=', n_printable_nodes+n_auxiliary_nodes, ' J=', n_printable_elements,' ET=BRICK'
             endif
 
@@ -1512,10 +1512,12 @@ subroutine assemble_field_projection(start_element,end_element,n_field_variables
 
             mat_prop_index = material_list(element_list(lmn)%material_index)%prop_index
             n_mat_props = material_list(element_list(lmn)%material_index)%n_properties
-                   !     Form element contribution to nodal force vector
+                   !     Form element contribution to nodal force vector           
+            
             call continuum_element_fieldvariables_2D(lmn, element_list(lmn)%flag, element_list(lmn)%n_nodes, &                            ! Input variables
-                local_nodes(1:element_list(lmn)%n_nodes),material_namelist(element_list(lmn)%material_index)(1:80), &      ! Input variables
+                local_nodes(1:element_list(lmn)%n_nodes), &      ! Input variables
                 densities(element_list(lmn)%density_index),n_mat_props, material_properties(mat_prop_index),  &              ! Input variables
+                material_namelist(element_list(lmn)%material_index)(1:80), &
                 element_coords(1:ix),ix, element_dof_increment(1:iu), element_dof_total(1:iu),iu,      &                   ! Input variables
                 ns, initial_state_variables(iof:iof+ns-1), &                                                               ! Input variables
                 updated_state_variables(iof:iof+ns), &
@@ -1555,8 +1557,9 @@ subroutine assemble_field_projection(start_element,end_element,n_field_variables
             n_mat_props = material_list(element_list(lmn)%material_index)%n_properties
                    !     Form element contribution to nodal force vector
             call continuum_element_fieldvariables_3D(lmn, element_list(lmn)%flag, element_list(lmn)%n_nodes, &                            ! Input variables
-                local_nodes(1:element_list(lmn)%n_nodes),material_namelist(element_list(lmn)%material_index)(1:80), &      ! Input variables
+                local_nodes(1:element_list(lmn)%n_nodes), &      ! Input variables
                 densities(element_list(lmn)%density_index),n_mat_props, material_properties(mat_prop_index),  &              ! Input variables
+                material_namelist(element_list(lmn)%material_index)(1:80), &
                 element_coords(1:ix),ix, element_dof_increment(1:iu), element_dof_total(1:iu),iu,      &                   ! Input variables
                 ns, initial_state_variables(iof:iof+ns-1), &                                                               ! Input variables
                 updated_state_variables(iof:iof+ns), &
@@ -1616,25 +1619,25 @@ subroutine assemble_field_projection(start_element,end_element,n_field_variables
             abq_PREDEF(2,1,1:element_list(lmn)%n_nodes) = BTINC
             abq_NPREDF = 1
 
-            element_state_variables(1:ns) = updated_state_variables(iof:iof+ns-1)
-
+            element_state_variables(1:ns) = updated_state_variables(iof:iof+ns-1)         
+             
             call EN234FEA_ABAQUS_STATE_PROJECTION(staticstep,n_field_variables,field_variable_names, &                                                           ! Field variable definition
                 nodal_field_variables(1:n_field_variables,1:element_list(lmn)%n_nodes), &
                 element_state_variables(1:ns),energy(ABQ_NENERGY*(lmn-1)+1:ABQ_NENERGY*lmn),abq_NENERGY,iu,ns, &
                 element_properties(element_list(lmn)%element_property_index),element_list(lmn)%n_element_properties, &
                 element_coords(1:ix),abq_MCRD(lmn), &
-                element_list(lmn)%n_nodes,element_dof_increment(1:iu)+element_dof_total(1:iu),&
+                element_list(lmn)%n_nodes,element_dof_increment(1:iu)+element_dof_total(1:iu),element_dof_increment(1:iu),&
                 abq_V,abq_A,abq_JTYPE,abq_time,DTIME, &
-                1,current_step_number,lmn,abq_PARAMS,abq_PREDEF,abq_NPREDF,&
+                1,current_step_number,lmn,abq_PREDEF,abq_NPREDF,&
                 int_element_properties(element_list(lmn)%int_element_property_index),element_list(lmn)%n_int_element_properties, &
                 max_total_time)
 
-        else
-
+        else       
+            
             call user_element_fieldvariables(lmn, element_list(lmn)%flag, element_list(lmn)%n_nodes, &
                 local_nodes(1:element_list(lmn)%n_nodes), &       ! Input variables
                 element_list(lmn)%n_element_properties, element_properties(element_list(lmn)%element_property_index),  &  ! Input variables
-                int_element_properties(element_list(lmn)%int_element_property_index),element_list(lmn)%n_int_element_properties, & ! Input variables
+                element_list(lmn)%n_int_element_properties,int_element_properties(element_list(lmn)%int_element_property_index), & ! Input variables
                 element_coords(1:ix),ix, element_dof_increment(1:iu), element_dof_total(1:iu),iu,      &                  ! Input variables
                 ns, initial_state_variables(iof:iof+ns),updated_state_variables(iof:iof+ns), &                            ! Input variables
                 n_field_variables,field_variable_names, &                                                           ! Field variable definition

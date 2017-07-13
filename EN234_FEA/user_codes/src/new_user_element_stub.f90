@@ -49,6 +49,10 @@ subroutine new_user_element_static(lmn, element_identifier, n_nodes, node_proper
     real( prec ), intent( out )   :: element_residual(length_dof_array)                     ! Element residual force (ROW)
 
 
+    element_stiffness = 0.d0
+    element_residual = 0.d0
+    fail = .false.
+    
     return
 end subroutine new_user_element_static
 
@@ -100,6 +104,8 @@ subroutine new_user_element_dynamic(lmn, element_identifier, n_nodes, node_prope
 
     logical, intent( inout )       :: element_deleted                                       ! Set to .true. to delete an element
 
+    element_residual = 0.d0
+    
     return
 
 end subroutine new_user_element_dynamic
@@ -151,7 +157,8 @@ subroutine new_user_element_fieldvariables(lmn, element_identifier, n_nodes, nod
              
     real( prec ), intent( out )   :: nodal_fieldvariables(n_field_variables,n_nodes)        ! Element stiffness (ROW,COLUMN)
 
-
+    nodal_fieldvariables = 0.d0
+    
     return
 
 end subroutine new_user_element_fieldvariables

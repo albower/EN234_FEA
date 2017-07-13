@@ -100,8 +100,8 @@ subroutine user_print(n_steps)
        write(user_print_units(1),'(A)') 'VARIABLES = X,Y,Ux,Uy,theta'
        write(user_print_units(2),'(A)') 'VARIABLES = S,Fx,Fy,Mz'
      endif
-     write(user_print_units(1),'(A10,E10.4,A1)') ' ZONE, T="',TIME+DTIME,'"'
-     write(user_print_units(2),'(A10,E10.4,A1)') ' ZONE, T="',TIME+DTIME,'"'
+     write(user_print_units(1),'(A10,E12.4,A1)') ' ZONE, T="',TIME+DTIME,'"'
+     write(user_print_units(2),'(A10,E12.4,A1)') ' ZONE, T="',TIME+DTIME,'"'
 
      do n = 1,n_nodes
         write(6,'(5(1x,D17.6))') coords(2*n-1),coords(2*n), &

@@ -19,16 +19,17 @@
   ! Local Variables
   integer :: k
   logical :: strcmp
+  logical :: ex
   character (len=100) :: callstr
     
   !     Look for file name in list of open files
   
-    do k = 1, n_total_files
-      if ( strcmp(fname,file_list(k), 100) ) then
-        iun = file_units(k)
-        return
-      end if
-    end do
+  do k = 1, n_total_files
+    if ( strcmp(fname,file_list(k), 100) ) then
+      iun = file_units(k)
+      return
+    end if
+  end do
 
   !     rw determines how the file will be opened
   !     rw = 1 : File is opened for writing in ASCII
@@ -41,11 +42,12 @@
   !     Move existing file with name
   !     FNAME to FNAME~
 
-  if (rw==1) then
+  inquire(FILE=trim(fname),EXIST=ex)
+  if (rw==1 .and. ex  ) then
     if ( IOPSYS==0 ) then
       callstr = 'mv ' // trim(fname) // ' ' //trim(fname)//'~'
     else if ( IOPSYS==1 ) then
-      callstr = 'move ' // trim(fname) // ' ' //trim(fname)//'~'
+       callstr = 'move ' // trim(fname) // ' ' //trim(fname)//'~'
     end if
     call system(callstr)
   endif

@@ -85,6 +85,8 @@ subroutine read_input_file
     length_element_properties = 0
     length_int_element_properties = 0
     length_material_properties = 0
+    property_index = 1
+    int_property_index = 1
     length_densities = 0
     length_state_variables = 0
     n_initial_state_vars = 0

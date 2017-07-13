@@ -191,7 +191,7 @@ subroutine compute_static_time_increment(iteration,converged,continue_timesteps,
           new_time_increment = abq_PNEWDT*DTIME
 
         write(IOW,'(//A)')        ' +++ A timestep cutback was specified in an ABAQUS UEL or UMAT +++ '
-        write(IOW,'(A35,G10.5)')  '     Timestep has been reduced to: ',new_time_increment
+        write(IOW,'(A35,G13.5)')  '     Timestep has been reduced to: ',new_time_increment
 
           return
        endif
@@ -207,7 +207,7 @@ subroutine compute_static_time_increment(iteration,converged,continue_timesteps,
             stop
         endif
         write(IOW,'(//A)')        ' +++ Newton-Raphson iterations have not converged +++ '
-        write(IOW,'(A35,G10.5)')  '     Timestep has been reduced to: ',new_time_increment
+        write(IOW,'(A35,G13.5)')  '     Timestep has been reduced to: ',new_time_increment
         return
     endif
 
