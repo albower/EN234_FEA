@@ -399,12 +399,14 @@ subroutine check_stiffness(element_flag)
 
         !     Form element stiffness
         iof = element_list(lmn)%state_index
-        if (iof==0) iof = 1
         ns = element_list(lmn)%n_states
-        if (ns==0) ns=1
-
-        element_state_variables(1:ns) = initial_state_variables(iof:iof+ns-1)
-
+        if (ns==0) then 
+           ns=1
+           element_state_variables(1) = 0.d0
+        else
+          element_state_variables(1:ns) = initial_state_variables(iof:iof+ns-1)
+        endif
+        
         call UEL(resid0(1:iu),element_stiffness(1:iu,1:iu),element_state_variables, &
             energy(8*lmn-7:8*lmn),iu,1,ns, &
             element_properties(element_list(lmn)%element_property_index),element_list(lmn)%n_element_properties, &

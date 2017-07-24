@@ -221,8 +221,13 @@ subroutine assemble_direct_stiffness(fail)
 
             element_PNEWDT = 1.d99
 
-            element_state_variables(1:ns) = initial_state_variables(iof:iof+ns-1)
-
+            if (element_list(lmn)%n_states==0) then 
+               ns=1
+               element_state_variables(1) = 0.d0
+            else
+               element_state_variables(1:ns) = initial_state_variables(iof:iof+ns-1)
+            endif            
+            
             call UEL(element_residual(1:iu),element_stiffness(1:iu,1:iu),element_state_variables(1:ns), &
                 energy(8*lmn-7:8*lmn),iu,1,ns, &
                 element_properties(element_list(lmn)%element_property_index),element_list(lmn)%n_element_properties, &
@@ -238,7 +243,7 @@ subroutine assemble_direct_stiffness(fail)
                 abq_PNEWDT = element_PNEWDT
             endif
 
-            updated_state_variables(iof:iof+ns-1) = element_state_variables(1:ns)
+            if (element_list(lmn)%n_states>0) updated_state_variables(iof:iof+ns-1) = element_state_variables(1:ns)
 
         else
 

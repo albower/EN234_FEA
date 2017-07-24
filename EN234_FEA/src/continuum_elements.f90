@@ -139,7 +139,6 @@ subroutine continuum_element_static_2D(current_step_number,lmn, element_identifi
 !   specific internal energy, specific plastic dissipation, specific creep dissipation,
 !   user defined variables
 !
-
     x = reshape(element_coords,(/2,length_coord_array/2/))
 
     if (n_nodes == 1) n_points = 1
@@ -319,7 +318,7 @@ subroutine continuum_element_static_2D(current_step_number,lmn, element_identifi
         Bbar(1,1:2*n_nodes-1:2) = dNdx(1:n_nodes,1)
         Bbar(2,2:2*n_nodes:2) = dNdx(1:n_nodes,2)
         Bbar(4,1:2*n_nodes-1:2) = dNdx(1:n_nodes,2)
-        Bbar(4,2:3*n_nodes:2) = dNdx(1:n_nodes,1)
+        Bbar(4,2:2*n_nodes:2) = dNdx(1:n_nodes,1)
 
         S = reshape(matmul(transpose(Bbar),stress),(/2,length_dof_array/2/))
 
