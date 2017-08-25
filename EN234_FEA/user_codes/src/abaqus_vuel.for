@@ -312,8 +312,8 @@
 
                 do i = 1,nfacenodes
                     ipoin = 3*face_node_list(i)-2
-                    RHS(iblock,ipoin:ipoin+3) =
-     1                            RHS(iblock,ipoin:ipoin+3)
+                    RHS(iblock,ipoin:ipoin+2) =
+     1                            RHS(iblock,ipoin:ipoin+2)
      2                        - N2(i)*adlmag(iblock)*norm(1:3)*w(kint)      ! Note determinant is already in normal
                 end do
             end do
