@@ -18,6 +18,7 @@ contains
 
    subroutine addlistdata(start_index,linked_list_array,linked_list_end,datavalue)     
       use Types
+      use ParamIO
       implicit none
       integer, intent(in)    :: start_index                                            ! The index of the first bin in the linked list
       integer, intent(in)    :: datavalue
@@ -41,6 +42,12 @@ contains
              currentindex = linked_list_array(currentindex)%next
            else                                                      ! Otherwise create a new bin at the end of the linked list
              linked_list_end = linked_list_end + 1
+             if (linked_list_end>size(linked_list_array)) then
+                 write(IOW,*) ' *** Error detected in subroutine addlistdata ***'
+                 write(IOW,*) ' Insufficient memory was found for an integer linked list '
+                 write(IOW,*) ' Its current size is ',size(linked_list_array)
+                 stop
+             endif
              linked_list_array(currentindex)%next = linked_list_end
              currentindex = linked_list_end
              linked_list_array(currentindex)%n_entries=0
@@ -80,6 +87,12 @@ contains
              currentindex = linked_list_array(currentindex)%next
            else           ! Create a new bin at the end of the linked list
              linked_list_end = linked_list_end + 1
+             if (linked_list_end>size(linked_list_array)) then
+                 write(IOW,*) ' *** Error detected in subroutine adddistinctlistdata ***'
+                 write(IOW,*) ' Insufficient memory was found for an integer linked list '
+                 write(IOW,*) ' Its current size is ',size(linked_list_array)
+                 stop
+             endif
              linked_list_array(currentindex)%next = linked_list_end
              currentindex = linked_list_end
              linked_list_array(currentindex)%n_entries=0
