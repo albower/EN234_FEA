@@ -59,6 +59,7 @@ contains
     
     subroutine adddistinctlistdata(start_index,linked_list_array,linked_list_end,datavalue) 
       use Types
+      use ParamIO
       implicit none
       
       integer, intent(in)    :: start_index
