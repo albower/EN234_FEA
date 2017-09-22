@@ -124,7 +124,7 @@ subroutine continuum_element_static_2D(current_step_number,lmn, element_identifi
     real (prec)  ::  abq_TIME(2)
     real (prec)  ::  predef(1)                                ! Dummy argument for predefined field
     real (prec)  ::  dpred(1)                                 ! Dummy argument for predefined field increment
-
+    real (prec)  ::  dummy_state(1)                           ! Dummy state variable array
 
     integer :: ie
     integer :: i
@@ -141,7 +141,7 @@ subroutine continuum_element_static_2D(current_step_number,lmn, element_identifi
 !
     x = reshape(element_coords,(/2,length_coord_array/2/))
 
-    if (n_nodes == 1) n_points = 1
+    if (n_nodes == 3) n_points = 1
     if (n_nodes == 4) n_points = 4
     if (n_nodes == 6) n_points = 4
     if (n_nodes == 8) n_points = 9
@@ -254,7 +254,7 @@ subroutine continuum_element_static_2D(current_step_number,lmn, element_identifi
 
         strainInc(1:4) = [deps(1,1),deps(2,2),deps(3,3),2.d0*deps(1,2)]                    ! UMAT format strain increment vector
 
-        if (n_state_vars_per_intpt>10)   updated_state_variables(iof+11:iof+n_state_vars_per_intpt-1) = &
+        if (n_state_vars_per_intpt>11)   updated_state_variables(iof+11:iof+n_state_vars_per_intpt-1) = &
                                          initial_state_variables(iof+11:iof+n_state_vars_per_intpt-1)
         SSE = initial_state_variables(iof+8)
         SPD = initial_state_variables(iof+9)
@@ -262,12 +262,19 @@ subroutine continuum_element_static_2D(current_step_number,lmn, element_identifi
 
         abq_time(1:2) = TIME
 
-        Call UMAT(stress,updated_state_variables(iof+11:iof+n_state_vars_per_intpt-1),Dcorot,SSE,SPD,SCD, &
+        if (n_state_vars_per_intpt>11) then
+           Call UMAT(stress,updated_state_variables(iof+11:iof+n_state_vars_per_intpt-1),Dcorot,SSE,SPD,SCD, &
                   RPL,Dtherm,DRPLDE,DRPLDT, &
                   strain,strainInc,abq_time,DTIME,BTEMP,BTINC,predef,dpred,material_name, &
                   3,1,4,n_state_vars_per_intpt-11,material_properties,n_properties,xintpt,dR,PNEWDT, &
                   charLength,F0,F1,lmn,kint,0,0,1,current_step_number)
-
+        else
+           Call UMAT(stress,dummy_state,Dcorot,SSE,SPD,SCD, &
+                  RPL,Dtherm,DRPLDE,DRPLDT, &
+                  strain,strainInc,abq_time,DTIME,BTEMP,BTINC,predef,dpred,material_name, &
+                  3,1,4,n_state_vars_per_intpt-11,material_properties,n_properties,xintpt,dR,PNEWDT, &
+                  charLength,F0,F1,lmn,kint,0,0,1,current_step_number)
+        endif
 !       Derivative of strain with respect to def gradient, multiplied by F1bar^T
         H = transpose(matmul(F1,Fmidinv))
         Lam = eye3_D - 0.5d0*matmul(dF,Fmidinv)
@@ -481,7 +488,7 @@ subroutine continuum_element_static_3D(current_step_number,lmn, element_identifi
     real (prec)  ::  abq_TIME(2)
     real (prec)  ::  predef(1)                                ! Dummy argument for predefined field
     real (prec)  ::  dpred(1)                                 ! Dummy argument for predefined field increment
-
+    real (prec)  ::  dummy_state(1)                           ! Dummy state variable array
     integer :: ie
     integer :: i
 !
@@ -609,7 +616,7 @@ subroutine continuum_element_static_3D(current_step_number,lmn, element_identifi
                         2.d0*deps(1,2),2.d0*deps(1,3),2.d0*deps(2,3)]                    ! UMAT format strain increment vector
 
 
-        if (n_state_vars_per_intpt>14)   then
+        if (n_state_vars_per_intpt>15)   then
           updated_state_variables(iof+15:iof+n_state_vars_per_intpt-1) = &
                                          initial_state_variables(iof+15:iof+n_state_vars_per_intpt-1)
         endif
@@ -619,12 +626,19 @@ subroutine continuum_element_static_3D(current_step_number,lmn, element_identifi
 
         abq_time(1:2) = TIME
 
-        Call UMAT(stress,updated_state_variables(iof+15:iof+n_state_vars_per_intpt-1),Dcorot,SSE,SPD,SCD, &
+        if (n_state_vars_per_intpt>15) then
+           Call UMAT(stress,updated_state_variables(iof+15:iof+n_state_vars_per_intpt-1),Dcorot,SSE,SPD,SCD, &
                   RPL,Dcorot,DRPLDE,DRPLDT, &
                   strain,strainInc,abq_time,DTIME,BTEMP,BTINC,predef,dpred,material_name, &
                   3,3,6,n_state_vars_per_intpt-15,material_properties,n_properties,xintpt,dR,PNEWDT, &
                   charLength,F0,F1,lmn,kint,0,0,1,current_step_number)
-
+        else
+           Call UMAT(stress,dummy_state,Dcorot,SSE,SPD,SCD, &
+                  RPL,Dcorot,DRPLDE,DRPLDT, &
+                  strain,strainInc,abq_time,DTIME,BTEMP,BTINC,predef,dpred,material_name, &
+                  3,3,6,n_state_vars_per_intpt-15,material_properties,n_properties,xintpt,dR,PNEWDT, &
+                  charLength,F0,F1,lmn,kint,0,0,1,current_step_number)
+        endif
 !       Derivative of strain with respect to def gradient, multiplied by F1bar^T
         H = transpose(matmul(F1,Fmidinv))
         Lam = eye3_D - 0.5d0*matmul(dF,Fmidinv)
