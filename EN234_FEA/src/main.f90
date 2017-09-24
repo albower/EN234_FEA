@@ -22,8 +22,13 @@ program en234fea
 !   Demo codes - these provide examples of coding and testing ABAQUS user elements in EN234FEA
 !
 !   Small strain linear elasticity - the UEL is in Abaqus_uel_3d.for
+
+!   Use the full path if you are using Intel Parallel studio (you will need to change the path)
+!   infil = 'C:/Users/Bower/Source/Repos/EN234_FEA/EN234_FEA/input_files/Abaqus_uel_linear_elastic_3d.in'
+!   Eclipse can handle the relative path
 !   infil = './input_files/Abaqus_uel_linear_elastic_3d.in'
 !   open (unit = IOR, file = infil, status = 'old', ERR=500)
+!   outfil = 'C:/Users/Bower/Source/Repos/EN234_FEA/EN234_FEA/input_files/Abaqus_uel_linear_elastic_3d.in'
 !   outfil = './Output_files/Abaqus_uel_linear_elastic_3d.out'
 !   open (UNIT = IOW, FILE = outfil, STATUS = 'unknown', ERR=500)
 
@@ -44,13 +49,18 @@ program en234fea
 !   Runs an explicit dynamic simulation of a 3D plate with a central hole with and ABAQUS VUEL
 !   This simulation will take a few minutes to run (running in release mode will speed it up)
   
-   write(6,*) ' Running '
-   infil = 'C:/Users/Bower/Source/Repos/EN234_FEA/EN234_FEA/input_files/Abaqus_uel_holeplate_3d.in'
-   open (unit = IOR, file = infil, status = 'old', ERR=500)
-   outfil = 'C:/Users/Bower/Source/Repos/EN234_FEA/EN234_FEA/Output_files/Abaqus_uel_holeplate_3d.out'
-   open (UNIT = IOW, FILE = outfil, STATUS = 'unknown', ERR=500)
+!
+!   To run with intel parallel studio you have to put in the full file path
+!   infil = 'C:/Users/Bower/Source/Repos/EN234_FEA/EN234_FEA/input_files/Abaqus_vuel_holeplate_3d.in'
+!   Eclipse can handle the relative path
+!   infil = './input_files/Abaqus_uel_holeplate_3d.in'
+!   open (unit = IOR, file = infil, status = 'old', ERR=500)
+!   Fila path for parallel studio
+!   outfil = 'C:/Users/Bower/Source/Repos/EN234_FEA/EN234_FEA/Output_files/Abaqus_vuel_holeplate_3d.out'
+!   outfil = './output_files/Abaqus_uel_holeplate_3d.out'
+!   open (UNIT = IOW, FILE = outfil, STATUS = 'unknown', ERR=500)
 
-   write(6,*) ' Files opened '
+
    
 !  Tests an ABAQUS format UMAT subroutine (in abaqus_umat_elastic.for) with 2 8 noded quadrilateral elements
 !   infil = './input_files/Abaqus_umat_linear_elastic_3d.in'
@@ -181,7 +191,7 @@ program en234fea
   stop
   
   500 write(6,*) ' Error opening input or output file '
-  
+  write(6,*) infil
 
   
   
