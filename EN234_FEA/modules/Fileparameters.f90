@@ -20,7 +20,8 @@
   integer :: k
   logical :: strcmp
   logical :: ex
-  character (len=100) :: callstr
+  character (len=220) :: callstr
+  character (len=200) :: fullpath
     
   !     Look for file name in list of open files
   
@@ -42,14 +43,15 @@
   !     Move existing file with name
   !     FNAME to FNAME~
 
-  inquire(FILE=trim(fname),EXIST=ex)
+  fullpath = trim(root_directory)//trim(fname)
+  inquire(FILE=fullpath,EXIST=ex)
   if (rw==1 .and. ex  ) then
     if ( IOPSYS==0 ) then
-      callstr = 'mv ' // trim(fname) // ' ' //trim(fname)//'~'
+      callstr = 'mv ' // trim(fullpath) // ' ' //trim(fullpath)//'~'
     else if ( IOPSYS==1 ) then
-       callstr = 'move ' // trim(fname) // ' ' //trim(fname)//'~'
+       callstr = 'move ' // trim(fullpath) // ' ' //trim(fullpath)//'~'
     end if
-    call system(callstr)
+    call system(trim(callstr))
   endif
   !     Open the file and add it to the list of open files
 
@@ -67,9 +69,9 @@
   file_list(n_total_files) = trim(fname)
   if (rw==1) then
     continue
-    open (UNIT = iun, FILE = fname, STATUS = 'NEW')   ! File opened for writing
+    open (UNIT = iun, FILE = trim(fullpath), STATUS = 'NEW')   ! File opened for writing
   else if (rw==-1) then
-    open (UNIT = iun, file = fname, STATUS = 'OLD')   ! File opened for reading
+    open (UNIT = iun, file = trim(fullpath), STATUS = 'OLD')   ! File opened for reading
   endif
 
 end subroutine files

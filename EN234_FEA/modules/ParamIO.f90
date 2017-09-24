@@ -20,6 +20,7 @@ module ParamIO
   integer :: ityp(100), lenstr(100)
 
   character ( len = 100 ) :: infil, outfil
+  character ( len = 100 ) :: root_directory
   
 
 end module ParamIO

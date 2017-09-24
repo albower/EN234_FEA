@@ -5,6 +5,15 @@ program en234fea
   use Controlparameters
   implicit none
  
+  character (len=80) :: VS_root_folder
+  character (len=80) :: Eclipse_root_folder
+
+  VS_root_folder = 'H:/Repos/EN234FEA/EN234FEA/'   ! This should work with Intel Studio on the remote desktop if you follow the instructions for cloning your EN234FEA fork 
+  Eclipse_root_folder = './'   !  This should work with Eclipse
+
+  VS_root_folder = 'C:/Users/Bower/Source/Repos/EN234_FEA/EN234_FEA/'
+  root_directory = VS_root_folder
+    
 !
 !   Homework Assignments 2017
 !   You can test the ABAQUS UEL, UMAT and VUMAT codes that you develop for EN234
@@ -22,176 +31,125 @@ program en234fea
 !   Demo codes - these provide examples of coding and testing ABAQUS user elements in EN234FEA
 !
 !   Small strain linear elasticity - the UEL is in Abaqus_uel_3d.for
-
-!   Use the full path if you are using Intel Parallel studio (you will need to change the path)
-   infil = 'C:/Users/Bower/Source/Repos/EN234_FEA/EN234_FEA/input_files/Abaqus_uel_linear_elastic_3d.in'
-!   Eclipse can handle the relative path
-!   infil = './input_files/Abaqus_uel_linear_elastic_3d.in'
-   open (unit = IOR, file = infil, status = 'old', ERR=500)
-   outfil = 'C:/Users/Bower/Source/Repos/EN234_FEA/EN234_FEA/output_files/Abaqus_uel_linear_elastic_3d.out'
-!   outfil = './Output_files/Abaqus_uel_linear_elastic_3d.out'
-   open (UNIT = IOW, FILE = outfil, STATUS = 'unknown', ERR=500)
+!   infil = 'input_files/Abaqus_uel_linear_elastic_3d.in'
+!   outfil = 'Output_files/Abaqus_uel_linear_elastic_3d.out'
 
 !   Linear elastic plate with a central hole using an ABAQUS UEL
-!   infil = './input_files/Abaqus_uel_holeplate_3d.in'
-!   open (unit = IOR, file = infil, status = 'old', ERR=500)
-!   outfil = './Output_files/Abaqus_uel_holeplate_3d.out'
-!   open (UNIT = IOW, FILE = outfil, STATUS = 'unknown', ERR=500)
+   infil = 'input_files/Abaqus_uel_holeplate_3d.in'
+   outfil = 'Output_files/Abaqus_uel_holeplate_3d.out'
 
 !   Simple 1 element demonstration of an ABAQUS VUEL
 !   The source code for the user element is in abaqus_vuel.for
-!   infil = './input_files/Abaqus_vuel_linear_elastic_3d.in'
-!   open (unit = IOR, file = infil, status = 'old', ERR=500)
-!   outfil = './Output_files/Abaqus_vuel_linear_elastic_3d.out'
-!   open (UNIT = IOW, FILE = outfil, STATUS = 'unknown', ERR=500)
+!   infil = 'input_files/Abaqus_vuel_linear_elastic_3d.in'
+!   outfil = 'Output_files/Abaqus_vuel_linear_elastic_3d.out'
 !
 
 !   Runs an explicit dynamic simulation of a 3D plate with a central hole with and ABAQUS VUEL
 !   This simulation will take a few minutes to run (running in release mode will speed it up)
-  
 !
-!   To run with intel parallel studio you have to put in the full file path
-!   infil = 'C:/Users/Bower/Source/Repos/EN234_FEA/EN234_FEA/input_files/Abaqus_vuel_holeplate_3d.in'
-!   Eclipse can handle the relative path
-!   infil = './input_files/Abaqus_uel_holeplate_3d.in'
-!   open (unit = IOR, file = infil, status = 'old', ERR=500)
-!   Fila path for parallel studio
-!   outfil = 'C:/Users/Bower/Source/Repos/EN234_FEA/EN234_FEA/Output_files/Abaqus_vuel_holeplate_3d.out'
-!   outfil = './output_files/Abaqus_uel_holeplate_3d.out'
-!   open (UNIT = IOW, FILE = outfil, STATUS = 'unknown', ERR=500)
-
-
+!   infil = 'input_files/Abaqus_uel_holeplate_3d.in'
+!   outfil = 'output_files/Abaqus_uel_holeplate_3d.out'
    
-!  Tests an ABAQUS format UMAT subroutine (in abaqus_umat_elastic.for) with 2 8 noded quadrilateral elements
-!   infil = './input_files/Abaqus_umat_linear_elastic_3d.in'
-!   open (unit = IOR, file = infil, status = 'old', ERR=500)
-!   outfil = './Output_files/Abaqus_umat_linear_elastic_3d.out'
-!   open (UNIT = IOW, FILE = outfil, STATUS = 'unknown', ERR=500)
+!  Tests an ABAQUS format UMAT subroutine (in abaqus_umat_elastic.for) with two 8 noded quadrilateral elements
+!   infil = 'input_files/Abaqus_umat_linear_elastic_3d.in'
+!   outfil = 'Output_files/Abaqus_umat_linear_elastic_3d.out'
 
 !  Tests the UMAT on the hole in a plate problem.
-!   infil = './input_files/Abaqus_umat_holeplate_3d.in'
-!   open (unit = IOR, file = infil, status = 'old', ERR=500)
-!   outfil = './Output_files/Abaqus_umat_holeplate_3d.out'
-!   open (UNIT = IOW, FILE = outfil, STATUS = 'unknown', ERR=500)
+!   infil = 'input_files/Abaqus_umat_holeplate_3d.in'
+!   outfil = 'Output_files/Abaqus_umat_holeplate_3d.out'
 
-
-!   infil = './input_files/Abaqus_vumat_linear_elastic_3d.in'
-!   open (unit = IOR, file = infil, status = 'old', ERR=500)
-!   outfil = './Output_files/Abaqus_vumat_linear_elastic_3d.out'
-!   open (UNIT = IOW, FILE = outfil, STATUS = 'unknown', ERR=500)
+!   Tests the VUMAT on a hole in a plate problem
+!   infil = 'input_files/Abaqus_vumat_linear_elastic_3d.in'
+!   outfil = 'Output_files/Abaqus_vumat_linear_elastic_3d.out'
 
 
 !   Homework 3: develop and test an ABAQUS user element implementing 2D linear elasticity with full integration
 
 !   Simple test of a 2D plane element
-!   infil = './input_files/Abaqus_uel_linear_elastic_2d.in'
-!   open (unit = IOR, file = infil, status = 'old', ERR=500)
-!   outfil = './Output_files/Abaqus_uel_linear_elastic_2d.out'
-!   open (UNIT = IOW, FILE = outfil, STATUS = 'unknown', ERR=500)
+!   infil = 'input_files/Abaqus_uel_linear_elastic_2d.in'
+!   outfil = 'Output_files/Abaqus_uel_linear_elastic_2d.out'
 
 !  Solve hole-in-a-plate problem with 4 noded quadrilateral elements
-!   infil = './input_files/Abaqus_uel_holeplate_2d_quad4.in'
-!   open (unit = IOR, file = infil, status = 'old', ERR=500)
-!   outfil = './Output_files/Abaqus_uel_holeplate_2d_quad4.out'
-!   open (UNIT = IOW, FILE = outfil, STATUS = 'unknown', ERR=500)
+!   infil = 'input_files/Abaqus_uel_holeplate_2d_quad4.in'
+!   outfil = 'Output_files/Abaqus_uel_holeplate_2d_quad4.out'
 
 !  Solve hole-in-a-plate problem with 8 noded quads
-!   infil = './input_files/Abaqus_uel_holeplate_2d_quad8.in'
-!   open (unit = IOR, file = infil, status = 'old', ERR=500)
-!   outfil = './Output_files/Abaqus_uel_holeplate_2d_quad8.out'
-!   open (UNIT = IOW, FILE = outfil, STATUS = 'unknown', ERR=500)
+!   infil = 'input_files/Abaqus_uel_holeplate_2d_quad8.in'
+!   outfil = 'Output_files/Abaqus_uel_holeplate_2d_quad8.out'
 
 !  Solve hole-in-a-plate problem with 3 noded triangles
-!   infil = './input_files/Abaqus_uel_holeplate_2d_tri3.in'
-!   open (unit = IOR, file = infil, status = 'old', ERR=500)
-!   outfil = './Output_files/Abaqus_uel_holeplate_2d_tri3.out'
-!   open (UNIT = IOW, FILE = outfil, STATUS = 'unknown', ERR=500)
+!   infil = 'input_files/Abaqus_uel_holeplate_2d_tri3.in'
+!   outfil = 'Output_files/Abaqus_uel_holeplate_2d_tri3.out'
 
-!   infil = './input_files/Abaqus_uel_holeplate_2d_tri6.in'
-!   open (unit = IOR, file = infil, status = 'old', ERR=500)
-!   outfil = './Output_files/Abaqus_uel_holeplate_2d_tri6.out'
-!   open (UNIT = IOW, FILE = outfil, STATUS = 'unknown', ERR=500)
+!   infil = 'input_files/Abaqus_uel_holeplate_2d_tri6.in'
+!   outfil = 'Output_files/Abaqus_uel_holeplate_2d_tri6.out'
 
 !  HW5  Cantilever beam to test incompatible mode elements
 
-!   infil = './input_files/Abaqus_uel_cantilever.in'
-!   open (unit = IOR, file = infil, status = 'old', ERR=500)
-!   outfil = './Output_files/Abaqus_uel_cantilever.out'
-!   open (UNIT = IOW, FILE = outfil, STATUS = 'unknown', ERR=500)
+!   infil = 'input_files/Abaqus_uel_cantilever.in'
+!   outfil = 'Output_files/Abaqus_uel_cantilever.out'
 
 !  HW6  Porous elasticity UMAT
 
-!   infil = './input_files/Abaqus_umat_porous_elastic.in'
-!   open (unit = IOR, file = infil, status = 'old', ERR=500)
-!   outfil = './Output_files/Abaqus_umat_porous_elastic.out'
-!   open (UNIT = IOW, FILE = outfil, STATUS = 'unknown', ERR=500)
+!   infil = 'input_files/Abaqus_umat_porous_elastic.in'
+!   outfil = 'Output_files/Abaqus_umat_porous_elastic.out'
 
- !  HW7 Hyperelastic user element
-!   infil = './input_files/Abaqus_uel_hyperelastic.in'
-!   open (unit = IOR, file = infil, status = 'old', ERR=500)
-!   outfil = './Output_files/Abaqus_uel_hyperelastic.out'
-!   open (UNIT = IOW, FILE = outfil, STATUS = 'unknown', ERR=500)
+!  HW7 Hyperelastic user element
+!   infil = 'input_files/Abaqus_uel_hyperelastic.in'
+!   outfil = 'Output_files/Abaqus_uel_hyperelastic.out'
 
 !   Hyperelastic umat
-!  infil = './input_files/Abaqus_umat_hyperelastic2.in'
-!  open (unit = IOR, file = infil, status = 'old', ERR=500)
-!  outfil = './Output_files/Abaqus_umat_hyperelastic.out'
-!  open (UNIT = IOW, FILE = outfil, STATUS = 'unknown', ERR=500)
-
+!  infil = 'input_files/Abaqus_umat_hyperelastic2.in'
+!  outfil = 'Output_files/Abaqus_umat_hyperelastic.out'
 
 !   HW8 - phase field modeling with elasticity
 !   Single element test
-!   infil = './input_files/Abaqus_uel_phasefield_1el.in'
-!   open (unit = IOR, file = infil, status = 'old', ERR=500)
-!   outfil = './Output_files/Abaqus_uel_phasefield_1el.out'
-!   open (UNIT = IOW, FILE = outfil, STATUS = 'unknown', ERR=500)
+!   infil = 'input_files/Abaqus_uel_phasefield_1el.in'
+!   outfil = 'Output_files/Abaqus_uel_phasefield_1el.out'
 
-!   infil = './input_files/Abaqus_uel_phasefield_coarse.in'
-!   open (unit = IOR, file = infil, status = 'old', ERR=500)
-!   outfil = './Output_files/Abaqus_uel_phasefield_coarse.out'
-!   open (UNIT = IOW, FILE = outfil, STATUS = 'unknown', ERR=500)
+!   infil = 'input_files/Abaqus_uel_phasefield_coarse.in'
+!   outfil = 'Output_files/Abaqus_uel_phasefield_coarse.out'
 
-!   infil = './input_files/Abaqus_uel_phasefield_fine.in'
-!   open (unit = IOR, file = infil, status = 'old', ERR=500)
-!   outfil = './Output_files/Abaqus_uel_phasefield_fine.out'
-!   open (UNIT = IOW, FILE = outfil, STATUS = 'unknown', ERR=500)
+!   infil = 'input_files/Abaqus_uel_phasefield_fine.in'
+!   outfil = 'Output_files/Abaqus_uel_phasefield_fine.out'
 
 
 !   Homework 9 - McCormick model with 1 element
-!   infil = './input_files/Abaqus_vumat_McCormick.in'
-!   open (unit = IOR, file = infil, status = 'old', ERR=500)
-!   outfil = './Output_files/Abaqus_vumat_McCormick.out'
-!   open (UNIT = IOW, FILE = outfil, STATUS = 'unknown', ERR=500)
+!   infil = 'input_files/Abaqus_vumat_McCormick.in'
+!   outfil = 'Output_files/Abaqus_vumat_McCormick.out'
+
 
 
 !   Homework 10 - Continuum beam element solution to end loaded cantilever beam
-!   infil = './input_files/Abaqus_uel_continuum_beam.in'
-!   open (unit = IOR, file = infil, status = 'old', ERR=500)
-!   outfil = './Output_files/Abaqus_uel_continuum_beam.out'
-!   open (UNIT = IOW, FILE = outfil, STATUS = 'unknown', ERR=500)
+!   infil = 'input_files/Abaqus_uel_continuum_beam.in'
+!   outfil = 'Output_files/Abaqus_uel_continuum_beam.out'
 
-
-  call read_input_file
+   infil = trim(root_directory)//trim(infil)
+   outfil = trim(root_directory)//trim(outfil)
+   open (unit = IOR, file = trim(infil), status = 'old', ERR=500)
+   open (UNIT = IOW, FILE = trim(outfil), STATUS = 'unknown', ERR=500)
+   
+   call read_input_file
   
    if (printinitialmesh) call print_initial_mesh
 
-  if (checkstiffness) call check_stiffness(checkstiffness_elementno)
-  if (checktangent) call check_tangent(checktangent_materialno)
+   if (checkstiffness) call check_stiffness(checkstiffness_elementno)
+   if (checktangent) call check_tangent(checktangent_materialno)
 
-  if (staticstep) then
+   if (staticstep) then
       call compute_static_step
       if (checkstiffness) call check_stiffness(checkstiffness_elementno)
       if (checktangent) call check_tangent(checktangent_materialno)
-  endif
+   endif
   
-  if (explicitdynamicstep) call explicit_dynamic_step
+   if (explicitdynamicstep) call explicit_dynamic_step
   
-  write(6,*) ' Program completed successfully '
+   write(6,*) ' Program completed successfully '
 
-  stop
+   stop
   
   500 write(6,*) ' Error opening input or output file '
-  write(6,*) infil
+ 
 
   
   

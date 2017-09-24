@@ -74,6 +74,8 @@
 		<File RelativePath="..\..\EN234_FEA\input_files\Abaqus_vuel_linear_elastic_3d.in"/>
 		<File RelativePath="..\..\EN234_FEA\input_files\Abaqus_vumat_linear_elastic_3d.in"/>
 		<File RelativePath="..\..\EN234_FEA\input_files\Abaqus_vumat_McCormick.in"/></Filter>
+		<Filter Name="Output_Files">
+		<File RelativePath="..\..\EN234_FEA\Output_Files\Abaqus_uel_linear_elastic_3d.out"/></Filter>
 		<Filter Name="Resource Files" Filter="rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe">
 		<File RelativePath="..\..\EN234_FEA\modules\Bandwidth.f90"/>
 		<File RelativePath="..\..\EN234_FEA\modules\Boundaryconditions.f90"/>
