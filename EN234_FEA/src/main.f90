@@ -24,13 +24,13 @@ program en234fea
 !   Small strain linear elasticity - the UEL is in Abaqus_uel_3d.for
 
 !   Use the full path if you are using Intel Parallel studio (you will need to change the path)
-!   infil = 'C:/Users/Bower/Source/Repos/EN234_FEA/EN234_FEA/input_files/Abaqus_uel_linear_elastic_3d.in'
+   infil = 'C:/Users/Bower/Source/Repos/EN234_FEA/EN234_FEA/input_files/Abaqus_uel_linear_elastic_3d.in'
 !   Eclipse can handle the relative path
 !   infil = './input_files/Abaqus_uel_linear_elastic_3d.in'
-!   open (unit = IOR, file = infil, status = 'old', ERR=500)
-!   outfil = 'C:/Users/Bower/Source/Repos/EN234_FEA/EN234_FEA/input_files/Abaqus_uel_linear_elastic_3d.in'
+   open (unit = IOR, file = infil, status = 'old', ERR=500)
+   outfil = 'C:/Users/Bower/Source/Repos/EN234_FEA/EN234_FEA/output_files/Abaqus_uel_linear_elastic_3d.out'
 !   outfil = './Output_files/Abaqus_uel_linear_elastic_3d.out'
-!   open (UNIT = IOW, FILE = outfil, STATUS = 'unknown', ERR=500)
+   open (UNIT = IOW, FILE = outfil, STATUS = 'unknown', ERR=500)
 
 !   Linear elastic plate with a central hole using an ABAQUS UEL
 !   infil = './input_files/Abaqus_uel_holeplate_3d.in'
