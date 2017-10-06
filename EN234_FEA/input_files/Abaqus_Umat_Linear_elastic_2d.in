@@ -19,24 +19,24 @@
 %    Enter x,y,z coords of nodes.   The node number is optional, and is ignored in the code.
          COORDINATES
 %  Coords for 8 noded element
-         1,  0.d0, 0.d0
-         2,  1.d0, 0.d0
-         3,  2.d0, 0.d0
-         4,  2.d0, 1.d0
-         5,  2.d0, 2.d0
-         6,  1.d0, 2.d0
-         7,  0.d0, 2.d0
-         8,  0.d0, 1.d0
+%         1,  0.d0, 0.d0
+%         2,  1.d0, 0.d0
+%         3,  2.d0, 0.d0
+%         4,  2.d0, 1.d0
+%         5,  2.d0, 2.d0
+%         6,  1.d0, 2.d0
+%         7,  0.d0, 2.d0
+%         8,  0.d0, 1.d0
 % Coords for two 6 noded triangles
-%         1, 0.d0, 0.d0
-%         2, 1.d0, 0.d0
-%         3, 2.d0, 0.d0
-%         4, 0.d0, 1.d0
-%         5, 1.d0, 1.d0
-%         6, 2.d0, 1.d0
-%         7, 0.d0, 2.d0
-%         8, 1.d0, 2.d0
-%         9, 2.d0, 2.d0
+         1, 0.d0, 0.d0
+         2, 1.d0, 0.d0
+         3, 2.d0, 0.d0
+         4, 0.d0, 1.d0
+         5, 1.d0, 1.d0
+         6, 2.d0, 1.d0
+         7, 0.d0, 2.d0
+         8, 1.d0, 2.d0
+         9, 2.d0, 2.d0
         END COORDINATES
       END NODES
 
@@ -64,9 +64,9 @@
 %     The element number (first number in the list) is optional, and is ignored in the code
         CONNECTIVITY, zone1
 %  Uncomment lines below for 6 noded triangles, and comment out the 8 noded connectivity
-%     1,     1, 3, 9, 2, 6, 5   
-%     2,     1, 9, 7, 5, 8, 4
-    1,     1, 3, 5, 7, 2, 4, 6, 8
+     1,     1, 3, 9, 2, 6, 5   
+     2,     1, 9, 7, 5, 8, 4
+%    1,     1, 3, 5, 7, 2, 4, 6, 8
         END CONNECTIVITY
 
 %     The PROPERTIES, PARAMETERS, CONNECTIVITY keywords can be repeated here to define more set of elements with different properties
@@ -88,10 +88,10 @@
  
 %       The NODESET key defines a list of nodes
         NODESET, left
-           1, 7, 8
+           1, 4, 7
         END NODESET
         NODESET, right
-           3, 4, 5
+           3, 6, 9
         END NODESET
         NODESET, base
            1, 2, 3
@@ -144,7 +144,7 @@
           INITIAL TIME STEP, 1.d0       
           MAX TIME STEP, 1.d0
           MIN TIME STEP, 0.001d0
-          MAX NUMBER OF STEPS, 3
+          MAX NUMBER OF STEPS, 10
           STOP TIME, 10.d0
           STATE PRINT STEP INTERVAL, 1
           USER PRINT STEP INTERVAL, 1
