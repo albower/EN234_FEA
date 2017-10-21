@@ -84,13 +84,13 @@ program en234fea
    !infil = 'input_files/Abaqus_uel_holeplate_2d_tri3.in'
    !outfil = 'Output_files/Abaqus_uel_holeplate_2d_tri3.out'
 
-   infil = 'input_files/Abaqus_uel_holeplate_2d_tri6.in'
-   outfil = 'Output_files/Abaqus_uel_holeplate_2d_tri6.out'
+   !infil = 'input_files/Abaqus_uel_holeplate_2d_tri6.in'
+   !outfil = 'Output_files/Abaqus_uel_holeplate_2d_tri6.out'
 
 !  HW5  Cantilever beam to test incompatible mode elements
 
-!   infil = 'input_files/Abaqus_uel_cantilever.in'
-!   outfil = 'Output_files/Abaqus_uel_cantilever.out'
+   infil = 'input_files/Abaqus_uel_cantilever.in'
+   outfil = 'Output_files/Abaqus_uel_cantilever.out'
 
 !  HW6  Porous elasticity UMAT
 
