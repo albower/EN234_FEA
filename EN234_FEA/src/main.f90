@@ -89,13 +89,13 @@ program en234fea
 
 !  HW5  Cantilever beam to test incompatible mode elements
 
-   infil = 'input_files/Abaqus_uel_cantilever.in'
-   outfil = 'Output_files/Abaqus_uel_cantilever.out'
+   !infil = 'input_files/Abaqus_uel_cantilever.in'
+   !outfil = 'Output_files/Abaqus_uel_cantilever.out'
 
 !  HW6  Porous elasticity UMAT
 
-!   infil = 'input_files/Abaqus_umat_porous_elastic.in'
-!   outfil = 'Output_files/Abaqus_umat_porous_elastic.out'
+   infil = 'input_files/Abaqus_umat_porous_elastic.in'
+   outfil = 'Output_files/Abaqus_umat_porous_elastic.out'
 
 !  HW7 Hyperelastic user element
 !   infil = 'input_files/Abaqus_uel_hyperelastic.in'
