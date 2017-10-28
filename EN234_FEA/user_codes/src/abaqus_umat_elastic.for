@@ -3,7 +3,7 @@
 !
 !
 
-      SUBROUTINE UMAT(STRESS,STATEV,DDSDDE,SSE,SPD,SCD,
+      SUBROUTINE UMAT_1(STRESS,STATEV,DDSDDE,SSE,SPD,SCD,
      1RPL,DDSDDT,DRPLDE,DRPLDT,
      2STRAN,DSTRAN,TIME,DTIME,TEMP,DTEMP,PREDEF,DPRED,CMNAME,
      3NDI,NSHR,NTENS,NSTATV,PROPS,NPROPS,COORDS,DROT,PNEWDT,
@@ -277,16 +277,22 @@
           end do
       end do
       do i = NDI+1, NDI+NSHR
-          A(i,i) = 1
+          A(i,i) = 0.5
       end do
       
       ddsdde = shmod*A + CapKb*B
       
-      do i = 1,ntens
-          do j = 1,ntens
-              stress(i) = stress(i) + ddsdde(i,j)*dstran(j)
-          end do
-      end do
+      edev(1:3) = stran(1:3)+dstran(1:3)-sum(stran(1:3)+dstran(1:3))/3
+      edev(4:6) = (stran(4:6)+dstran(4:6))/2
+      
+      stress = 2*shmod*edev
+      stress(4:6) = pt/3*(1-tv)
+      
+      !do i = 1,ntens
+      !    do j = 1,ntens
+      !        stress(i) = stress(i) + ddsdde(i,j)*dstran(j)
+      !    end do
+      !end do
 
       RETURN
-      END subroutine UMAT
+      END subroutine UMAT_1
