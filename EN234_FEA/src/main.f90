@@ -8,10 +8,10 @@ program en234fea
   character (len=80) :: VS_root_folder
   character (len=80) :: Eclipse_root_folder
 
-  VS_root_folder = 'C:/Users/DongLi/Source/Repos/EN234_FEA/EN234_FEA/'   ! This should work with Intel Studio on the remote desktop if you follow the instructions for cloning your EN234FEA fork 
+  VS_root_folder = 'C:/Users/dli33/Source/Repos/EN234_FEA/EN234_FEA/'   ! This should work with Intel Studio on the remote desktop if you follow the instructions for cloning your EN234FEA fork 
   Eclipse_root_folder = './'   !  This should work with Eclipse
 
-  VS_root_folder = 'C:/Users/DongLi/Source/Repos/EN234_FEA/EN234_FEA/'
+  VS_root_folder = 'C:/Users/dli33/Source/Repos/EN234_FEA/EN234_FEA/'
   root_directory = VS_root_folder
     
 !
@@ -94,12 +94,12 @@ program en234fea
 
 !  HW6  Porous elasticity UMAT
 
-   infil = 'input_files/Abaqus_umat_porous_elastic.in'
-   outfil = 'Output_files/Abaqus_umat_porous_elastic.out'
+   !infil = 'input_files/Abaqus_umat_porous_elastic.in'
+   !outfil = 'Output_files/Abaqus_umat_porous_elastic.out'
 
 !  HW7 Hyperelastic user element
-!   infil = 'input_files/Abaqus_uel_hyperelastic.in'
-!   outfil = 'Output_files/Abaqus_uel_hyperelastic.out'
+   infil = 'input_files/Abaqus_uel_hyperelastic.in'
+   outfil = 'Output_files/Abaqus_uel_hyperelastic.out'
 
 !   Hyperelastic umat
 !  infil = 'input_files/Abaqus_umat_hyperelastic2.in'
