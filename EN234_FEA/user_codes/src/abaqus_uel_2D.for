@@ -11,7 +11,7 @@
 !          abq_UEL_1D_integrationpoints(n_points, n_nodes, xi, w)  = defines integration points for 1D line integral
 !=========================== ABAQUS format user element subroutine ===================
 
-      SUBROUTINE UEL(RHS,AMATRX,SVARS,ENERGY,NDOFEL,NRHS,NSVARS,
+      SUBROUTINE UEL_2D(RHS,AMATRX,SVARS,ENERGY,NDOFEL,NRHS,NSVARS,
      1     PROPS,NPROPS,COORDS,MCRD,NNODE,U,DU,V,A,JTYPE,TIME,DTIME,
      2     KSTEP,KINC,JELEM,PARAMS,NDLOAD,JDLTYP,ADLMAG,PREDEF,NPREDF,
      3     LFLAGS,MLVARX,DDLMAG,MDLOAD,PNEWDT,JPROPS,NJPROP,PERIOD)
@@ -259,7 +259,7 @@
 
       return
 
-      END SUBROUTINE UEL
+      END SUBROUTINE UEL_2D
 
 
 

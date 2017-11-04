@@ -3,7 +3,7 @@
 !
 !    This file is compatible with both EN234_FEA and ABAQUS/Standard
 !
-!    The example implements a standard fully integrated 3D linear elastic continuum element
+!    The example implements a standard fully integrated 3D hyperelastic continuum element
 !
 !    The file also contains the following subrouines:
 !          abq_UEL_3D_integrationpoints           - defines integration ponits for 3D continuum elements
@@ -13,7 +13,7 @@
 !
 !=========================== ABAQUS format user element subroutine ===================
 
-      SUBROUTINE UEL_3D(RHS,AMATRX,SVARS,ENERGY,NDOFEL,NRHS,NSVARS,
+      SUBROUTINE UEL(RHS,AMATRX,SVARS,ENERGY,NDOFEL,NRHS,NSVARS,
      1     PROPS,NPROPS,COORDS,MCRD,NNODE,U,DU,V,A,JTYPE,TIME,DTIME,
      2     KSTEP,KINC,JELEM,PARAMS,NDLOAD,JDLTYP,ADLMAG,PREDEF,NPREDF,
      3     LFLAGS,MLVARX,DDLMAG,MDLOAD,PNEWDT,JPROPS,NJPROP,PERIOD)
@@ -115,16 +115,17 @@
       double precision  ::  strain(6)                         ! Strain vector contains [e11, e22, e33, 2e12, 2e13, 2e23]
       double precision  ::  stress(6)                         ! Stress vector contains [s11, s22, s33, s12, s13, s23]
       double precision  ::  D(6,6)                            ! stress = D*(strain)  (NOTE FACTOR OF 2 in shear strain)
-      double precision  ::  B(6,60)                           ! strain = B*(dof_total)
+      double precision  ::  B(9,60)                           ! strain = B*(dof_total)
       double precision  ::  dxidx(3,3), determinant           ! Jacobian inverse and determinant
-      double precision  ::  E, xnu, D44, D11, D12             ! Material properties
+      
+      double precision  ::  mu, Kmod, G11, G22, G33, G44      ! Material properties
+      double precision  ::  Gmat(6,6), F(3,3), Finv(3,3), strsq(3,3)
+      double precision  ::  Ctemp(3,3), Cinvtemp(3,3), H(6,9)
+      double precision  ::  Y(60,60), Sigsq(3,3), HB(6,60)
+      double precision  ::  q(9), C(6), Cbar(6), Cinv(6)
+      double precision  ::  P(6), Cstar(6), Cbarstar(6), Sigma(6)
+      double precision  ::  Jdet, Qsca, Cdet, quan
 
-    !
-    !     Example ABAQUS UEL implementing 3D linear elastic elements
-    !     El props are:
-
-    !     PROPS(1)         Young's modulus
-    !     PROPS(2)         Poisson's ratio
 
       if (NNODE == 4) n_points = 1               ! Linear tet
       if (NNODE == 10) n_points = 4              ! Quadratic tet
@@ -143,23 +144,22 @@
       RHS(1:MLVARX,1) = 0.d0
       AMATRX(1:NDOFEL,1:NDOFEL) = 0.d0
 
-      D = 0.d0
-      E = PROPS(1)
-      xnu = PROPS(2)
-      d44 = 0.5D0*E/(1+xnu)
-      d11 = (1.D0-xnu)*E/( (1+xnu)*(1-2.D0*xnu) )
-      d12 = xnu*E/( (1+xnu)*(1-2.D0*xnu) )
-      D(1:3,1:3) = d12
-      D(1,1) = d11
-      D(2,2) = d11
-      D(3,3) = d11
-      D(4,4) = d44
-      D(5,5) = d44
-      D(6,6) = d44
+      Gmat = 0.d0
+      mu = PROPS(1)
+      Kmod = PROPS(2)
+      G11 = PROPS(3)
+      G22 = PROPS(4)
+      G33 = PROPS(5)
+      G44 = PROPS(6)
+      Gmat(1,1) = G11
+      Gmat(2,2) = G22
+      Gmat(3,3) = G33
+      Gmat(4,4) = G44
+      Gmat(5,5) = G44
+      Gmat(6,6) = G44
 
       ENERGY(1:8) = 0.d0
 
-    !     --  Loop over integration points
       do kint = 1, n_points
         call abq_UEL_3D_shapefunctions(xi(1:3,kint),NNODE,N,dNdxi)
         dxdxi = matmul(coords(1:3,1:NNODE),dNdxi(1:NNODE,1:3))
@@ -170,76 +170,89 @@
         B(2,2:3*NNODE-1:3) = dNdx(1:NNODE,2)
         B(3,3:3*NNODE:3)   = dNdx(1:NNODE,3)
         B(4,1:3*NNODE-2:3) = dNdx(1:NNODE,2)
-        B(4,2:3*NNODE-1:3) = dNdx(1:NNODE,1)
-        B(5,1:3*NNODE-2:3) = dNdx(1:NNODE,3)
-        B(5,3:3*NNODE:3)   = dNdx(1:NNODE,1)
-        B(6,2:3*NNODE-1:3) = dNdx(1:NNODE,3)
-        B(6,3:3*NNODE:3)   = dNdx(1:NNODE,2)
-
-        strain = matmul(B(1:6,1:3*NNODE),U(1:3*NNODE))
-
-        stress = matmul(D,strain)
+        B(5,2:3*NNODE-1:3) = dNdx(1:NNODE,1)
+        B(6,1:3*NNODE-2:3) = dNdx(1:NNODE,3)
+        B(7,3:3*NNODE:3)   = dNdx(1:NNODE,1)
+        B(8,2:3*NNODE-1:3) = dNdx(1:NNODE,3)
+        B(9,3:3*NNODE:3)   = dNdx(1:NNODE,2)
+        
+        F = 0.d0
+        do i = 1, 3
+            F(i,1:3) = matmul(U(i:3*NNODE-3+i:3),dNdx(1:NNODE,1:3))
+            F(i,i) = F(i,i) + 1
+        end do
+        call abq_UEL_invert3d(F,Finv,Jdet)
+        
+        call abq_uel_hyper_generateH(F,H)
+        
+        Ctemp = matmul(transpose(F),F)
+        call abq_uel_hyper_sqtovec(Ctemp,C)
+        Cbar(1:6) = C(1:6)/(Jdet**(2/3))
+        call abq_UEL_invert3d(Ctemp,Cinvtemp,Cdet)
+        call abq_uel_hyper_sqtovec(Cinvtemp,Cinv)
+        Cstar(1:6) = C(1:6)
+        Cstar(4:6) = Cstar(4:6)*2
+        Cbarstar(1:6) = Cstar(1:6)/(Jdet**(2/3))
+        
+        Qsca = 0.d0
+        do i = 1, 3
+            Qsca = Qsca + Gmat(i,i)*(Cbarstar(i)-1)*(Cbarstar(i)-1)/4
+        end do
+        do i = 4, 6
+            Qsca = Qsca + Gmat(i,i)*Cbarstar(i)*Cbarstar(i)/4
+        end do
+        
+        quan = 0.d0
+        do i = 1, 3
+            quan = quan + Gmat(i,i)*Cstar(i)*(Cbarstar(i)-1)
+        end do
+        do i = 4, 6
+            quan = quan + Gmat(i,i)*Cstar(i)*Cbarstar(i)
+        end do
+        do i = 1, 3
+            P(i) = (Gmat(i,i)*(Cbarstar(i)-1) - quan*Cinv(i)/3)
+     1             /2/(Jdet**(2/3))
+        end do
+        do i = 4, 6
+            P(i) = (Gmat(i,i)*Cbarstar(i) - quan*Cinv(i)/3)
+     1             /2/(Jdet**(2/3))
+        end do
+        Sigma(1:6) = mu*exp(Qsca)*P(1:6)
+     1               +Kmod*Jdet*(Jdet-1)*Cinv(1:6)
+        call abq_uel_hyper_q(Sigma,F,q)
+        
+        call abq_uel_hyper_TanMatrix(mu,Kmod,Qsca,Jdet,
+     1           Gmat,Cstar,Cbarstar,Cinv,P,D)
+        
+        call abq_uel_hyper_Y(NNODE,Sigma,dNdx,Y)
+        
+        call abq_uel_hyper_vectosq(Sigma,Sigsq)
+        strsq = matmul(F,matmul(Sigsq,transpose(F)))/Jdet
+        call abq_uel_hyper_sqtovec(strsq,stress)
+        
         RHS(1:3*NNODE,1) = RHS(1:3*NNODE,1)
-     1   - matmul(transpose(B(1:6,1:3*NNODE)),stress(1:6))*
-     2                                          w(kint)*determinant
+     1   - matmul(transpose(B(1:9,1:3*NNODE)),q(1:9))*
+     2                                   w(kint)*determinant
 
+        HB = matmul(H,B(1:9,1:3*NNODE))
         AMATRX(1:3*NNODE,1:3*NNODE) = AMATRX(1:3*NNODE,1:3*NNODE)
-     1  + matmul(transpose(B(1:6,1:3*NNODE)),matmul(D,B(1:6,1:3*NNODE)))
-     2                                             *w(kint)*determinant
+     1        + (matmul(transpose(HB(1:6,1:3*NNODE)),
+     2        matmul(D,HB(1:6,1:3*NNODE))) + Y(1:3*NNODE,1:3*NNODE))
+     3        *w(kint)*determinant
 
-        ENERGY(2) = ENERGY(2)
-     1   + 0.5D0*dot_product(stress,strain)*w(kint)*determinant           ! Store the elastic strain energy
+        ENERGY(2) = ENERGY(2) + mu/2*(exp(Qsca)-1)
+     1              + K/2*(Jdet-1)*(Jdet-1)*w(kint)*determinant
 
         if (NSVARS>=n_points*6) then   ! Store stress at each integration point (if space was allocated to do so)
             SVARS(6*kint-5:6*kint) = stress(1:6)
         endif
       end do
 
-
       PNEWDT = 1.d0          ! This leaves the timestep unchanged (ABAQUS will use its own algorithm to determine DTIME)
-    !
-    !   Apply distributed loads
-    !
-    !   Distributed loads are specified in the input file using the Un option in the input file.
-    !   n specifies the face number, following the ABAQUS convention
-    !
-    !
-      do j = 1,NDLOAD
-
-        call abq_facenodes_3D(NNODE,iabs(JDLTYP(j,1)),
-     1                                     face_node_list,nfacenodes)
-
-        do i = 1,nfacenodes
-            face_coords(1:3,i) = coords(1:3,face_node_list(i))
-        end do
-
-        if (nfacenodes == 3) n_points = 3
-        if (nfacenodes == 6) n_points = 4
-        if (nfacenodes == 4) n_points = 4
-        if (nfacenodes == 8) n_points = 9
-
-        call abq_UEL_2D_integrationpoints(n_points, nfacenodes, xi2, w)
-
-        do kint = 1,n_points
-            call abq_UEL_2D_shapefunctions(xi2(1:2,kint),
-     1                        nfacenodes,N2,dNdxi2)
-            dxdxi2 = matmul(face_coords(1:3,1:nfacenodes),
-     1                           dNdxi2(1:nfacenodes,1:2))
-            norm(1)=(dxdxi2(2,1)*dxdxi2(3,2))-(dxdxi2(2,2)*dxdxi2(3,1))
-            norm(2)=(dxdxi2(1,1)*dxdxi2(3,2))-(dxdxi2(1,2)*dxdxi2(3,1))
-            norm(3)=(dxdxi2(1,1)*dxdxi2(2,2))-(dxdxi2(1,2)*dxdxi2(2,1))
-
-            do i = 1,nfacenodes
-                ipoin = 3*face_node_list(i)-2
-                RHS(ipoin:ipoin+2,1) = RHS(ipoin:ipoin+2,1)
-     1                 - N2(1:nfacenodes)*adlmag(j,1)*norm(1:3)*w(kint)      ! Note determinant is already in normal
-            end do
-        end do
-      end do
 
       return
 
-      END SUBROUTINE UEL_3D
+      END SUBROUTINE UEL
 
 
       subroutine abq_UEL_3D_integrationpoints(n_points, n_nodes, xi, w)
@@ -569,6 +582,49 @@
       end subroutine abq_UEL_3D_shapefunctions
 
 
+      subroutine abq_uel_hyper_generateH(F,H)
+      
+      double precision, intent(in) :: F(3,3)
+      double precision, intent(out) :: H(6,9)
+      
+      H = 0.d0
+      H(1,1) = F(1,1)
+      H(4,1) = F(1,2)
+      H(5,1) = F(1,3)
+      
+      H(2,2) = F(2,2)
+      H(4,2) = F(2,1)
+      H(6,2) = F(2,3)
+      
+      H(3,3) = F(3,3)
+      H(5,3) = F(3,1)
+      H(6,3) = F(3,2)
+      
+      H(2,4) = F(1,2)
+      H(4,4) = F(1,1)
+      H(6,4) = F(1,3)
+      
+      H(1,5) = F(2,1)
+      H(4,5) = F(2,2)
+      H(5,5) = F(2,3)
+      
+      H(3,6) = F(1,3)
+      H(5,6) = F(1,1)
+      H(6,6) = F(1,2)
+      
+      H(1,7) = F(3,1)
+      H(4,7) = F(3,2)
+      H(5,7) = F(3,3)
+      
+      H(3,8) = F(2,3)
+      H(5,8) = F(2,1)
+      H(6,8) = F(2,2)
+      
+      H(2,9) = F(3,2)
+      H(4,9) = F(3,1)
+      H(6,9) = F(3,3)
+      
+      end subroutine abq_uel_hyper_generateH
 
 
       subroutine abq_UEL_invert3d(A,A_inverse,determinant)
@@ -608,6 +664,7 @@
 
       end subroutine abq_UEL_invert3d
 
+      
       subroutine abq_facenodes_3D(nelnodes,face,list,nfacenodes)
 
       implicit none
@@ -668,5 +725,158 @@
       endif
 
       end subroutine abq_facenodes_3D
-
-
+      
+      
+      subroutine abq_uel_hyper_TanMatrix(mu,Kmod,Qsca,Jdet,
+     1           Gmat,Cstar,Cbarstar,Cinv,P,D)
+      
+      double precision, intent(in)  ::  mu, Kmod, Jdet, Qsca, P(6)
+      double precision, intent(in)  ::  Cstar(6), Cbarstar(6), Cinv(6)
+      double precision, intent(in)  ::  Gmat(6,6)
+      double precision, intent(out)  ::  D(6,6)
+      double precision  ::  Omega(6,6), M1(6,6), M2(6,6), M3(6,6)
+      double precision  ::  V1(6), V2(6), Iden(6)
+      
+      Iden = 0.d0
+      Iden(1:3) = 1
+      
+      Omega(1,1) = Cinv(1)*Cinv(1)
+      Omega(1,2) = Cinv(4)*Cinv(4)
+      Omega(1,3) = Cinv(5)*Cinv(5)
+      Omega(1,4) = Cinv(1)*Cinv(4)
+      Omega(1,5) = Cinv(1)*Cinv(5)
+      Omega(1,6) = Cinv(4)*Cinv(5)
+      
+      Omega(2,1) = Cinv(4)*Cinv(4)
+      Omega(2,2) = Cinv(2)*Cinv(2)
+      Omega(2,3) = Cinv(6)*Cinv(6)
+      Omega(2,4) = Cinv(4)*Cinv(2)
+      Omega(2,5) = Cinv(4)*Cinv(6)
+      Omega(2,6) = Cinv(2)*Cinv(6)
+      
+      Omega(3,1) = Cinv(5)*Cinv(5)
+      Omega(3,2) = Cinv(6)*Cinv(6)
+      Omega(3,3) = Cinv(3)*Cinv(3)
+      Omega(3,4) = Cinv(5)*Cinv(6)
+      Omega(3,5) = Cinv(5)*Cinv(3)
+      Omega(3,6) = Cinv(6)*Cinv(3)
+      
+      Omega(4,1) = Cinv(1)*Cinv(4)
+      Omega(4,2) = Cinv(4)*Cinv(2)
+      Omega(4,3) = Cinv(5)*Cinv(6)
+      Omega(4,4) = (Cinv(1)*Cinv(2)+Cinv(4)*Cinv(4))/2
+      Omega(4,5) = (Cinv(1)*Cinv(6)+Cinv(5)*Cinv(4))/2
+      Omega(4,6) = (Cinv(4)*Cinv(6)+Cinv(5)*Cinv(2))/2
+      
+      Omega(5,1) = Cinv(1)*Cinv(5)
+      Omega(5,2) = Cinv(4)*Cinv(6)
+      Omega(5,3) = Cinv(5)*Cinv(3)
+      Omega(5,4) = (Cinv(1)*Cinv(6)+Cinv(5)*Cinv(4))/2
+      Omega(5,5) = (Cinv(1)*Cinv(3)+Cinv(5)*Cinv(5))/2
+      Omega(5,6) = (Cinv(4)*Cinv(3)+Cinv(5)*Cinv(6))/2
+      
+      Omega(6,1) = Cinv(4)*Cinv(5)
+      Omega(6,2) = Cinv(2)*Cinv(6)
+      Omega(6,3) = Cinv(6)*Cinv(3)
+      Omega(6,4) = (Cinv(4)*Cinv(6)+Cinv(5)*Cinv(2))/2
+      Omega(6,5) = (Cinv(4)*Cinv(3)+Cinv(5)*Cinv(6))/2
+      Omega(6,6) = (Cinv(2)*Cinv(3)+Cinv(6)*Cinv(6))/2
+      
+      Omega = -Omega
+      
+      M1 = spread(Cstar,dim=2,ncopies=6)*spread(Cinv,dim=1,ncopies=6)
+      M2 = spread(Cinv,dim=2,ncopies=6)*
+     1     spread(matmul(Gmat,Cstar),dim=1,ncopies=6)
+      M3 = Gmat - (matmul(Gmat,M1)+M2)/3
+      M1 = spread(Cinv,dim=2,ncopies=6)*spread(Cinv,dim=1,ncopies=6)
+      M3 = M3 + dot_product(Cstar,matmul(Gmat,Cstar))/9*M1
+      M3 = M3/(Jdet**(4/3))
+      V1 = P - Cinv/3
+      M1 = spread(P,dim=2,ncopies=6)*spread(V1,dim=1,ncopies=6)
+      M3 = M3 + 2*M1
+      V1 = matmul(Gmat,Cbarstar-Iden)
+      M1 = spread(Cinv,dim=2,ncopies=6)*spread(V1,dim=1,ncopies=6)
+      M2 = dot_product(Cstar,V1)*Omega
+      M3 = M3 - (M1+M2)/3/(Jdet**(2/3))
+      M3 = M3*mu*exp(Qsca)
+      M1 = spread(Cinv,dim=2,ncopies=6)*spread(Cinv,dim=1,ncopies=6)
+      D = M3 + Kmod*Jdet*((2*Jdet-1)*M1+2*(Jdet-1)*Omega)
+      
+      end subroutine abq_uel_hyper_TanMatrix
+      
+      
+      subroutine abq_uel_hyper_q(Sigma,F,q)
+      double precision, intent(in)  ::  Sigma(6), F(3,3)
+      double precision, intent(out)  ::  q(9)
+      double precision  ::  Sigsq(3,3), qsq(3,3)
+      
+      call abq_uel_hyper_vectosq(Sigma,Sigsq)
+      
+      qsq = matmul(Sigsq,transpose(F))
+      
+      q(1) = qsq(1,1)
+      q(2) = qsq(2,2)
+      q(3) = qsq(3,3)
+      q(4) = qsq(2,1)
+      q(5) = qsq(1,2)
+      q(6) = qsq(3,1)
+      q(7) = qsq(1,3)
+      q(8) = qsq(3,2)
+      q(9) = qsq(2,3)
+      
+      end subroutine abq_uel_hyper_q
+      
+      
+      subroutine abq_uel_hyper_Y(nn,Sigma,dNdx,Y)
+      
+      integer, intent(in) :: nn
+      double precision, intent(in)  ::  Sigma(6), dNdx(20,3)
+      double precision, intent(out)  ::  Y(60,60)
+      integer :: i, j
+      double precision  ::  Sigsq(3,3), kij
+      
+      call abq_uel_hyper_vectosq(Sigma,Sigsq)
+      
+      do i = 1, nn
+          do j = 1, nn
+              kij = dot_product(dNdx(i,1:3),matmul(Sigsq,dNdx(j,1:3)))  
+              Y(3*i-2,3*j-2) = kij
+              Y(3*i-1,3*j-1) = kij
+              Y(3*i,3*j) = kij
+          end do
+      end do
+      
+      end subroutine abq_uel_hyper_Y
+      
+      
+      subroutine abq_uel_hyper_sqtovec(A,V)
+      
+      double precision, intent(in)  ::  A(3,3)
+      double precision, intent(out)  ::  V(6)
+      
+      V(1) = A(1,1)
+      V(2) = A(2,2)
+      V(3) = A(3,3)
+      V(4) = A(1,2)
+      V(5) = A(1,3)
+      V(6) = A(2,3)
+      
+      end subroutine abq_uel_hyper_sqtovec
+      
+      
+      subroutine abq_uel_hyper_vectosq(V,A)
+      
+      double precision, intent(in)  ::  V(6)
+      double precision, intent(out)  ::  A(3,3)
+      
+      A(1,1) = V(1)
+      A(1,2) = V(4)
+      A(1,3) = V(5)
+      A(2,1) = V(4)
+      A(2,2) = V(2)
+      A(2,3) = V(6)
+      A(3,1) = V(5)
+      A(3,2) = V(6)
+      A(3,3) = V(3)
+      
+      end subroutine abq_uel_hyper_vectosq
