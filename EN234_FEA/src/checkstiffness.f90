@@ -13,7 +13,7 @@ subroutine check_stiffness(element_flag)
     integer, intent(in)   :: element_flag
 
     ! Local Variables
-    integer         :: lmn,n,i,j,k,iof
+    integer         :: lmn,n,nn,m,i,j,k,iof
     integer         :: ix,iu,ns
     integer         :: icount,icount2
     integer         :: status
@@ -193,7 +193,8 @@ subroutine check_stiffness(element_flag)
 
 
         icount = 0
-        do n = 1,element_list(lmn)%n_nodes
+        do j = 1, element_list(lmn)%n_nodes
+            n = connectivity(element_list(lmn)%connect_index + j - 1)
             do i = 1,node_list(n)%n_dof
                 icount = icount + 1
                 element_dof_increment(icount) = element_dof_increment(icount) + 1.D-07
@@ -212,8 +213,9 @@ subroutine check_stiffness(element_flag)
                 write(IOW,*) ' Column ',icount, ' node ',n,' DOF ',i
 
                 icount2 = 0
-                do j = 1,element_list(lmn)%n_nodes
-                    do k = 1,node_list(j)%n_dof
+                do m = 1,element_list(lmn)%n_nodes
+                    nn = connectivity(element_list(lmn)%connect_index + m - 1)
+                    do k = 1,node_list(nn)%n_dof
                         icount2 = icount2 + 1
                         write(IOW,4000) icount2,j,k,element_stiffness(icount2,icount),numerical_stiffness(icount2,icount)
 4000                    format( ' Row ',i4,' node ',i4,' DOF ',i4,' Stiffness ',d15.5,' Numerical deriv ',d15.5 )
@@ -277,7 +279,8 @@ subroutine check_stiffness(element_flag)
             updated_state_variables(iof:iof+ns-1),resid0(1:iu),element_stiffness(1:iu,1:iu),element_PNEWDT)
 
         icount = 0
-        do n = 1,element_list(lmn)%n_nodes
+        do j = 1, element_list(lmn)%n_nodes
+            n = connectivity(element_list(lmn)%connect_index + j - 1)
             do i = 1,node_list(n)%n_dof
                 icount = icount + 1
                 element_dof_increment(icount) = element_dof_increment(icount) + 1.D-07
@@ -296,8 +299,9 @@ subroutine check_stiffness(element_flag)
                 write(IOW,*) ' Column ',icount, ' node ',n,' DOF ',i
 
                 icount2 = 0
-                do j = 1,element_list(lmn)%n_nodes
-                    do k = 1,node_list(j)%n_dof
+                do m = 1,element_list(lmn)%n_nodes
+                    nn = connectivity(element_list(lmn)%connect_index + m - 1)
+                    do k = 1,node_list(nn)%n_dof
                         icount2 = icount2 + 1
                         write(IOW,3000) icount2,j,k,element_stiffness(icount2,icount),numerical_stiffness(icount2,icount)
 3000                    format( ' Row ',i4,' node ',i4,' DOF ',i4,' Stiffness ',d15.5,' Numerical deriv ',d15.5 )
@@ -421,7 +425,8 @@ subroutine check_stiffness(element_flag)
 
 
         icount = 0
-        do n = 1,element_list(lmn)%n_nodes
+        do j = 1, element_list(lmn)%n_nodes
+            n = connectivity(element_list(lmn)%connect_index + j - 1)
             do i = 1,node_list(n)%n_dof
                 icount = icount + 1
                 element_dof_increment(icount) = element_dof_increment(icount) + 1.D-07
@@ -446,8 +451,9 @@ subroutine check_stiffness(element_flag)
                 write(IOW,*) ' Column ',icount, ' node ',n,' DOF ',i
 
                 icount2 = 0
-                do j = 1,element_list(lmn)%n_nodes
-                    do k = 1,node_list(j)%n_dof
+                do m = 1,element_list(lmn)%n_nodes
+                    nn = connectivity(element_list(lmn)%connect_index + m - 1)
+                    do k = 1,node_list(nn)%n_dof
                         icount2 = icount2 + 1
                         write(IOW,1000) icount2,j,k,element_stiffness(icount2,icount),numerical_stiffness(icount2,icount)
 1000                    format( ' Row ',i4,' node ',i4,' DOF ',i4,' Stiffness ',d15.5,' Numerical deriv ',d15.5 )
@@ -473,7 +479,8 @@ subroutine check_stiffness(element_flag)
         !     Compute numerical derivative of stiffness
 
         icount = 0
-        do n = 1,element_list(lmn)%n_nodes
+        do j = 1, element_list(lmn)%n_nodes
+            n = connectivity(element_list(lmn)%connect_index + j - 1)
             do i = 1,node_list(n)%n_dof
                 icount = icount + 1
                 element_dof_increment(icount) = element_dof_increment(icount) + 1.D-07
@@ -493,8 +500,9 @@ subroutine check_stiffness(element_flag)
                 write(IOW,*) ' Column ',icount, ' node ',n,' DOF ',i
          
                 icount2 = 0
-                do j = 1,element_list(lmn)%n_nodes
-                    do k = 1,node_list(j)%n_dof
+                do m = 1,element_list(lmn)%n_nodes
+                    nn = connectivity(element_list(lmn)%connect_index + m - 1)
+                    do k = 1,node_list(nn)%n_dof
                         icount2 = icount2 + 1
                         write(IOW,2000) icount2,j,k,element_stiffness(icount2,icount),numerical_stiffness(icount2,icount)
 2000                    format( ' Row ',i4,' node ',i4,' DOF ',i4,' Stiffness ',d15.5,' Numerical deriv ',d15.5 )
