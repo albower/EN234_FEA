@@ -3789,8 +3789,8 @@
 
 %       The HISTORY key defines a time history that can be applied to DOFs or distributed loads
         HISTORY, dof_history
-          0.d0, -0.005d0                  % Each line gives a time value and then a function value
-         10.d0, -0.005d0
+          0.d0, -0.000d0                  % Each line gives a time value and then a function value
+         10.d0, -0.001d0
         END HISTORY
 
         HISTORY, dload_history
