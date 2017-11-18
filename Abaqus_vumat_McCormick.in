@@ -1,0 +1,146 @@
+%
+%             Demonstration input file for simple general purpose FEA code EN234FEA
+%                                    A.F. Bower, August 2017
+%                                             HW9
+%
+%        Single element test of the McCormick dynamic strain ageing plasticity model 
+%        The material is assumed to be coded as an ABAQUS VUMAT
+%             
+%
+%
+% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% MESH DEFINITION %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%
+    MESH
+
+%    The NODE command defines properties of the nodes.  
+%    The parameters are # of coords, # of DOF, and an optional integer identifier
+       NODES
+%    The parameters are # of coords, # of DOF, and an optional integer identifier
+       PARAMETERS, 3, 3, 1
+%      Specify which nodal DOF are displacements.  In the example, DOF 1 is the x displacement, 2 is the y displacement, 3 is the z displacement
+       DISPLACEMENT DOF, 1, 2, 3
+%    Enter x,y,z coords of nodes.   The node number is optional, and is ignored in the code.
+         COORDINATES
+         1,  0.d0, 0.d0, 0.d0
+         2,  1.d0, 0.d0, 0.d0
+         3,  1.d0, 1.d0, 0.d0
+         4,  0.d0, 1.d0, 0.d0
+         5,  0.d0, 0.d0, 1.d0
+         6,  1.d0, 0.d0, 1.d0
+         7,  1.d0, 1.d0, 1.d0
+         8,  0.d0, 1.d0, 1.d0
+        END COORDINATES
+      END NODES
+%
+%     The MATERIAL command creates a new material.  The material properties can be assigned to ABAQUS style continuum elements to test an ABAQUS UMAT or VUMAT
+      MATERIAL, mccormick_vumat
+        STATE VARIABLES, 3          % Number of material state variables (if the key is omitted the number of state vars defaults to zero)
+        PROPERTIES
+         70.d03, 0.3d0              % E (MPa), nu; 
+         70.d0, 0.001d0, 0.3d0      % Y (MPa), e0, m
+         1.d-08, 2.23d0, 27.9d0     % edot0 (s^-1), S (MPa), H (MPa)
+         0.02d0, 1.8d-05, 0.336d0    % td (s), Omega, alpha
+        END PROPERTIES
+      END MATERIAL
+%
+%     The ELEMENT command defines properties of elements
+      ELEMENTS, INTERNAL
+%       The TYPE key selects an ABAQUS format continuum element
+%       The following elements are supported: C3D4, C3D8, C3D10, C3D20
+        TYPE, C3D8
+        PROPERTIES, mccormick_vumat
+        DENSITY, 0.005d0           % We are using mass scaling here the physical density is 2.7*10^-9 in SI units
+        INITIAL STATE VARIABLES
+             0.d0, 10.0d0, 0.d0         % The state vars are accumulated plastic strain, ta, increment in plastic strain
+        END INITIAL STATE VARIABLES
+
+%     Define element connectivity
+%     The element number (first number in the list) is optional, and is ignored in the code
+        CONNECTIVITY, zone1
+    1,     1, 2, 3, 4, 5, 6, 7, 8
+        END CONNECTIVITY
+
+%     The PROPERTIES, PARAMETERS, CONNECTIVITY keywords can be repeated here to define more set of elements with different properties
+
+        END ELEMENTS
+        END MESH
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% BOUNDARY CONDITIONS %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%     The BOUNDARY conditions key starts definition of BCs
+      BOUNDARY CONDITIONS
+
+%       The HISTORY key defines a time history that can be applied to DOFs or distributed loads
+
+        HISTORY, strainrate_history
+          0.d0, 0.02d0
+          0.5d0, 0.02d0
+          0.50000001d0,0.004d0
+          10.d0, 0.004d0
+        END HISTORY
+
+%       The NODESET key defines a list of nodes
+        NODESET, left
+           1, 4, 5, 8
+        END NODESET
+        NODESET, right
+           2,3,6,7
+        END NODESET
+
+%      The ELEMENTSET key defines a list of elements
+       ELEMENTSET, end_element
+           2
+       END ELEMENTSET
+
+%       The DEGREE OF FREEDOM key assigns values to nodal DOFs
+%       The syntax is node set name, DOF number, and either a value or a history name.
+%     
+        DEGREES OF FREEDOM
+           left, 1, VALUE, 0.d0
+           right, 1, HISTORY, strainrate_history, RATE   % The RATE prescribes velocity instead of displacement
+        END DEGREES OF FREEDOM
+
+   END BOUNDARY CONDITIONS
+
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% Analysis %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%   The EXPLICIT DYNAMIC STEP key initializes a dynamic load step
+
+     EXPLICIT DYNAMIC STEP
+
+%        The TIME STEP key defines values of parameters controlling time stepping.
+%        The parameters are time step, no. steps, no. steps between state prints, no. steps between user prints
+%        All parameters are required
+
+          TIME STEP, 0.00005
+          NUMBER OF STEPS, 20000
+          STATE PRINT STEPS, 500
+          USER PRINT STEPS, 50
+
+
+%      This prints the DOF values and projected nodal state for all solid elements to a tecplot readable file
+%      Nodal variables are printed as
+%         X, Y, (Z), Ux, Uy, (Uz), Projected states.
+%         Standard continuum elements allow you to print stresses (Sij), strains (Eij), and any material state variables Un if the material has state variables
+         PRINT STATE, Output_files\contourplots.dat
+            DEGREES OF FREEDOM
+            FIELD VARIABLES, S11,S22,S33,S12,S13,S23
+            DISPLACED MESH
+            DISPLACEMENT SCALE FACTOR, 1.d0
+         END PRINT STATE
+
+         USER PRINT FILES
+              Output_files\McCormick_stressvstrain.dat
+         END USER PRINT FILES
+         USER PRINT PARAMETERS
+                9 % Specify the HW problem number
+         END USER PRINT PARAMETERS
+
+
+        END EXPLICIT DYNAMIC STEP
+         
+
+   STOP
