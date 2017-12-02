@@ -96,7 +96,7 @@
       integer      :: i,j,n_points,kint, nfacenodes, ipoin, ksize
       integer      :: face_node_list(3)                       ! List of nodes on an element face
     !
-      double precision  ::  xi(2,9)                          ! Area integration points
+      double precision  ::  xi(2,9), xi1(9)                  ! Area integration points
       double precision  ::  w(9)                             ! Area integration weights
       double precision  ::  N(9)                             ! 2D shape functions
       double precision  ::  dNdxi(9,2)                       ! 2D shape function derivatives
@@ -134,7 +134,9 @@
       if (NNODE == 9) n_points = 9             ! Quadratic rect
 
     ! Write your code for a 2D element below
-      call abq_UEL_1D_integrationpoints(n_points, NNODE, xi, w)
+      call abq_UEL_1D_integrationpoints(n_points, NNODE, xi1, w)
+      xi = 0.d0
+      xi(2,1:n_points) = xi1(1:n_points)
 
       if (MLVARX<2*NNODE) then
         write(6,*) ' Error in abaqus UEL '
